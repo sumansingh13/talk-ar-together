@@ -15,10 +15,10 @@ const VoiceChatApp = () => {
   const [activeChannel, setActiveChannel] = useState('General');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [users, setUsers] = useState([
-    { id: 1, name: 'Alex Johnson', status: 'online', speaking: false, country: 'US' },
-    { id: 2, name: 'Maria Garcia', status: 'online', speaking: false, country: 'ES' },
-    { id: 3, name: 'Hiroshi Tanaka', status: 'away', speaking: false, country: 'JP' },
-    { id: 4, name: 'Emma Wilson', status: 'online', speaking: true, country: 'UK' },
+    { id: 1, name: 'Alex Johnson', status: 'online' as const, speaking: false, country: 'US' },
+    { id: 2, name: 'Maria Garcia', status: 'online' as const, speaking: false, country: 'ES' },
+    { id: 3, name: 'Hiroshi Tanaka', status: 'away' as const, speaking: false, country: 'JP' },
+    { id: 4, name: 'Emma Wilson', status: 'online' as const, speaking: true, country: 'UK' },
   ]);
 
   const channels = [
