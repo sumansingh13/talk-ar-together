@@ -29,18 +29,18 @@ const TranslationPanel = () => {
   ]);
 
   return (
-    <Card className="bg-burgundy-900/30 backdrop-blur-lg border-orange-300/30 text-white shadow-lg shadow-red-500/20">
+    <Card className="bg-slate-900/40 backdrop-blur-lg border-pink-300/20 text-white shadow-lg shadow-pink-500/10">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Globe className="w-5 h-5 text-orange-300" />
+            <Globe className="w-5 h-5 text-pink-300" />
             <span>Real-time Translation</span>
           </div>
           <Button
             variant={isTranslating ? "destructive" : "secondary"}
             size="sm"
             onClick={() => setIsTranslating(!isTranslating)}
-            className={isTranslating ? "bg-green-500/20 text-green-300 border-green-500/30" : "bg-red-500/20 text-red-300 border-red-500/30"}
+            className={isTranslating ? "bg-green-500/20 text-green-300 border-green-500/30" : "bg-purple-500/20 text-purple-300 border-purple-500/30"}
           >
             {isTranslating ? 'ON' : 'OFF'}
           </Button>
@@ -58,15 +58,15 @@ const TranslationPanel = () => {
 
         <div className="space-y-3 max-h-64 overflow-y-auto">
           {translations.map((translation) => (
-            <div key={translation.id} className="bg-black/40 border border-red-500/20 rounded-lg p-3 space-y-2">
+            <div key={translation.id} className="bg-black/30 border border-purple-500/20 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-orange-300">{translation.user}</span>
-                  <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400 bg-orange-500/10">
+                  <span className="text-sm font-medium text-pink-300">{translation.user}</span>
+                  <Badge variant="outline" className="text-xs border-pink-500/50 text-pink-400 bg-pink-500/10">
                     {translation.timestamp}
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" className="text-orange-400 hover:text-orange-200 hover:bg-red-500/20 p-1">
+                <Button variant="ghost" size="sm" className="text-pink-400 hover:text-pink-200 hover:bg-purple-500/20 p-1">
                   <Volume2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -96,7 +96,7 @@ const TranslationPanel = () => {
         </div>
 
         {!isTranslating && (
-          <div className="text-center text-orange-300 py-4">
+          <div className="text-center text-pink-300 py-4">
             <Globe className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">Enable translation to see real-time voice translations</p>
           </div>

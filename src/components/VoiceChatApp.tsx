@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Users, Globe, Shield, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,9 +34,9 @@ const VoiceChatApp = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-500 via-pink-500 via-orange-500 via-red-500 to-black text-white">
+    <div className="min-h-screen bg-gradient-to-b from-blue-600 via-purple-500 via-pink-500 via-orange-400 to-red-900 text-white">
       {/* Header */}
-      <div className="bg-black/30 backdrop-blur-lg border-b border-white/20">
+      <div className="bg-black/20 backdrop-blur-lg border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -81,11 +80,11 @@ const VoiceChatApp = () => {
           {/* Main Chat Area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Active Channel Info */}
-            <Card className="bg-burgundy-900/30 backdrop-blur-lg border-orange-300/30 text-white shadow-lg shadow-red-500/20">
+            <Card className="bg-slate-900/40 backdrop-blur-lg border-pink-300/20 text-white shadow-lg shadow-pink-500/10">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span># {activeChannel}</span>
-                  <Badge variant="secondary" className="bg-orange-500/20 text-orange-200 border-orange-500/30">
+                  <Badge variant="secondary" className="bg-pink-500/20 text-pink-200 border-pink-500/30">
                     <Users className="w-4 h-4 mr-1" />
                     {channels.find(c => c.name === activeChannel)?.users || 0} users
                   </Badge>
@@ -94,7 +93,7 @@ const VoiceChatApp = () => {
               <CardContent>
                 <div className="space-y-4">
                   {/* Voice Activity Indicator */}
-                  <div className="bg-black/40 rounded-lg p-4 border border-red-500/20">
+                  <div className="bg-black/30 rounded-lg p-4 border border-purple-500/20">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
                       <span className="text-sm text-green-300">Voice activity detected</span>
