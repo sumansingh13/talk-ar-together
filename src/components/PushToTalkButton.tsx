@@ -44,7 +44,7 @@ const PushToTalkButton = ({ isSpeaking, onToggle }: PushToTalkButtonProps) => {
         className={`w-24 h-24 rounded-full transition-all duration-200 transform ${
           isPressed 
             ? 'bg-gradient-to-r from-red-500 to-red-600 scale-110 shadow-lg shadow-red-500/50' 
-            : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:scale-105 shadow-lg shadow-purple-500/30'
+            : 'bg-gradient-to-r from-orange-500 to-red-500 hover:scale-105 shadow-lg shadow-orange-500/30'
         }`}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -62,10 +62,10 @@ const PushToTalkButton = ({ isSpeaking, onToggle }: PushToTalkButtonProps) => {
       </Button>
       
       <div className="text-center">
-        <p className="text-sm text-gray-300">
+        <p className="text-sm text-orange-200">
           {isPressed ? 'Release to stop' : 'Hold to talk'}
         </p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-orange-300">
           Press and hold SPACE or click
         </p>
       </div>

@@ -35,16 +35,16 @@ const VoiceChatApp = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-blue-500 via-pink-500 via-orange-500 via-red-500 to-black text-white">
       {/* Header */}
-      <div className="bg-black/20 backdrop-blur-lg border-b border-white/10">
+      <div className="bg-black/30 backdrop-blur-lg border-b border-white/20">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
                 <Zap className="w-6 h-6" />
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">
                 VoiceConnect Pro
               </h1>
             </div>
@@ -55,11 +55,11 @@ const VoiceChatApp = () => {
                 {isConnected ? 'Connected' : 'Connecting...'}
               </Badge>
               
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
                 <Shield className="w-5 h-5" />
               </Button>
               
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
                 <Globe className="w-5 h-5" />
               </Button>
             </div>
@@ -81,11 +81,11 @@ const VoiceChatApp = () => {
           {/* Main Chat Area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Active Channel Info */}
-            <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
+            <Card className="bg-burgundy-900/30 backdrop-blur-lg border-orange-300/30 text-white shadow-lg shadow-red-500/20">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span># {activeChannel}</span>
-                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-200 border-purple-500/30">
+                  <Badge variant="secondary" className="bg-orange-500/20 text-orange-200 border-orange-500/30">
                     <Users className="w-4 h-4 mr-1" />
                     {channels.find(c => c.name === activeChannel)?.users || 0} users
                   </Badge>
@@ -94,7 +94,7 @@ const VoiceChatApp = () => {
               <CardContent>
                 <div className="space-y-4">
                   {/* Voice Activity Indicator */}
-                  <div className="bg-black/20 rounded-lg p-4">
+                  <div className="bg-black/40 rounded-lg p-4 border border-red-500/20">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
                       <span className="text-sm text-green-300">Voice activity detected</span>
@@ -103,7 +103,7 @@ const VoiceChatApp = () => {
                     {/* Speaking Users */}
                     <div className="space-y-2">
                       {users.filter(user => user.speaking).map(user => (
-                        <div key={user.id} className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2">
+                        <div key={user.id} className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2 border border-green-500/20">
                           <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
                             <Mic className="w-4 h-4" />
                           </div>
