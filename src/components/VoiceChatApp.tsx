@@ -73,16 +73,16 @@ const VoiceChatApp = () => {
   const activeChannelData = channels.find(c => c.name === activeChannel);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 via-purple-500 via-pink-500 via-orange-400 to-red-900 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 via-purple-700 via-red-600 to-red-700 text-white">
       {/* Header */}
       <div className="bg-black/20 backdrop-blur-lg border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center">
                 <Zap className="w-6 h-6" />
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">Voxtrek</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-red-200 bg-clip-text text-transparent">Voxtrek</h1>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -90,9 +90,9 @@ const VoiceChatApp = () => {
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
                     <p className="text-sm text-white">{userProfile?.full_name || 'User'}</p>
-                    <p className="text-xs text-pink-300">@{userProfile?.username || 'username'}</p>
+                    <p className="text-xs text-red-300">@{userProfile?.username || 'username'}</p>
                   </div>
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-orange-400 rounded-full flex items-center justify-center text-white font-semibold">
+                  <div className="w-8 h-8 bg-gradient-to-r from-red-400 to-red-500 rounded-full flex items-center justify-center text-white font-semibold">
                     {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
                   </div>
                 </div>
@@ -143,11 +143,11 @@ const VoiceChatApp = () => {
           {/* Main Chat Area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Active Channel Info */}
-            <Card className="bg-slate-900/40 backdrop-blur-lg border-pink-300/20 text-white shadow-lg shadow-pink-500/10">
+            <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span># {activeChannel}</span>
-                  <Badge variant="secondary" className="bg-pink-500/20 text-pink-200 border-pink-500/30">
+                  <Badge variant="secondary" className="bg-red-500/20 text-red-200 border-red-500/30">
                     <Users className="w-4 h-4 mr-1" />
                     {activeChannelData?.participant_count || 0} users
                   </Badge>
@@ -156,7 +156,7 @@ const VoiceChatApp = () => {
               <CardContent>
                 <div className="space-y-4">
                   {/* Voice Activity Indicator */}
-                  <div className="bg-black/30 rounded-lg p-4 border border-purple-500/20">
+                  <div className="bg-black/30 rounded-lg p-4 border border-blue-500/20">
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse" />
                       <span className="text-sm text-green-300">Voice activity detected</span>

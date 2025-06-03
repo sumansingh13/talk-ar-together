@@ -9,7 +9,7 @@ const Index = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-600 via-purple-500 via-pink-500 via-orange-400 to-red-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 via-purple-700 via-red-600 to-red-700 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );

@@ -20,10 +20,10 @@ const VoiceEffects = () => {
   ];
 
   return (
-    <Card className="bg-slate-900/40 backdrop-blur-lg border-pink-300/20 text-white shadow-lg shadow-pink-500/10">
+    <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Zap className="w-5 h-5 text-pink-300" />
+          <Zap className="w-5 h-5 text-red-300" />
           <span>Voice Effects</span>
         </CardTitle>
       </CardHeader>
@@ -36,8 +36,8 @@ const VoiceEffects = () => {
               variant={selectedEffect === effect.id ? "secondary" : "ghost"}
               className={`h-16 flex-col space-y-1 transition-all ${
                 selectedEffect === effect.id 
-                  ? 'bg-pink-500/30 text-pink-200 border border-pink-400/50 shadow-md' 
-                  : 'hover:bg-purple-500/20 text-pink-300 border border-transparent hover:border-purple-400/30'
+                  ? 'bg-red-500/30 text-red-200 border border-red-400/50 shadow-md' 
+                  : 'hover:bg-blue-500/20 text-red-300 border border-transparent hover:border-blue-400/30'
               }`}
               onClick={() => setSelectedEffect(effect.id)}
             >
@@ -51,11 +51,11 @@ const VoiceEffects = () => {
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm text-pink-200 flex items-center space-x-2">
+              <label className="text-sm text-red-200 flex items-center space-x-2">
                 <Volume2 className="w-4 h-4" />
                 <span>Volume</span>
               </label>
-              <span className="text-sm text-pink-300">{volume[0]}%</span>
+              <span className="text-sm text-red-300">{volume[0]}%</span>
             </div>
             <Slider
               value={volume}
@@ -68,8 +68,8 @@ const VoiceEffects = () => {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm text-pink-200">Pitch</label>
-              <span className="text-sm text-pink-300">{pitch[0]}%</span>
+              <label className="text-sm text-red-200">Pitch</label>
+              <span className="text-sm text-red-300">{pitch[0]}%</span>
             </div>
             <Slider
               value={pitch}
@@ -82,8 +82,8 @@ const VoiceEffects = () => {
         </div>
 
         {/* Noise Cancellation */}
-        <div className="flex items-center justify-between pt-2 border-t border-pink-300/20">
-          <span className="text-sm text-pink-200">Noise Cancellation</span>
+        <div className="flex items-center justify-between pt-2 border-t border-red-300/20">
+          <span className="text-sm text-red-200">Noise Cancellation</span>
           <Button variant="outline" size="sm" className="text-green-300 border-green-500/30 bg-green-500/10 hover:bg-green-500/20">
             Active
           </Button>

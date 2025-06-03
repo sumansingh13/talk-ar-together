@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 interface Channel {
-  id: string; // Changed from number to string to match UUID
+  id: string;
   name: string;
   users: number;
   private: boolean;
@@ -20,10 +20,10 @@ interface ChannelListProps {
 
 const ChannelList = ({ channels, activeChannel, onChannelSelect }: ChannelListProps) => {
   return (
-    <Card className="bg-slate-900/40 backdrop-blur-lg border-pink-300/20 text-white shadow-lg shadow-pink-500/10">
+    <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Hash className="w-5 h-5 text-pink-300" />
+          <Hash className="w-5 h-5 text-red-300" />
           <span>Channels</span>
         </CardTitle>
       </CardHeader>
@@ -34,8 +34,8 @@ const ChannelList = ({ channels, activeChannel, onChannelSelect }: ChannelListPr
             variant={activeChannel === channel.name ? "secondary" : "ghost"}
             className={`w-full justify-start text-left h-auto p-3 transition-all ${
               activeChannel === channel.name 
-                ? 'bg-pink-500/30 text-pink-200 border border-pink-400/50 shadow-md' 
-                : 'hover:bg-purple-500/20 text-gray-200 border border-transparent hover:border-purple-400/30'
+                ? 'bg-red-500/30 text-red-200 border border-red-400/50 shadow-md' 
+                : 'hover:bg-blue-500/20 text-gray-200 border border-transparent hover:border-blue-400/30'
             }`}
             onClick={() => onChannelSelect(channel.name)}
           >
@@ -44,11 +44,11 @@ const ChannelList = ({ channels, activeChannel, onChannelSelect }: ChannelListPr
                 {channel.private ? (
                   <Lock className="w-4 h-4 text-orange-400" />
                 ) : (
-                  <Hash className="w-4 h-4 text-pink-400" />
+                  <Hash className="w-4 h-4 text-red-400" />
                 )}
                 <span className="font-medium">{channel.name}</span>
               </div>
-              <Badge variant="outline" className="text-xs border-pink-500/50 text-pink-300 bg-pink-500/10">
+              <Badge variant="outline" className="text-xs border-red-500/50 text-red-300 bg-red-500/10">
                 <Users className="w-3 h-3 mr-1" />
                 {channel.users}
               </Badge>
@@ -56,8 +56,8 @@ const ChannelList = ({ channels, activeChannel, onChannelSelect }: ChannelListPr
           </Button>
         ))}
         
-        <Button variant="ghost" className="w-full justify-start text-pink-300 hover:bg-purple-500/20 hover:text-pink-200 border border-transparent hover:border-purple-400/30">
-          <span className="text-2xl mr-2 text-pink-400">+</span>
+        <Button variant="ghost" className="w-full justify-start text-red-300 hover:bg-blue-500/20 hover:text-red-200 border border-transparent hover:border-blue-400/30">
+          <span className="text-2xl mr-2 text-red-400">+</span>
           <span>Create Channel</span>
         </Button>
       </CardContent>

@@ -37,10 +37,10 @@ const UserList = ({ users }: UserListProps) => {
   };
 
   return (
-    <Card className="bg-slate-900/40 backdrop-blur-lg border-pink-300/20 text-white shadow-lg shadow-pink-500/10">
+    <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          <Users className="w-5 h-5 text-pink-300" />
+          <Users className="w-5 h-5 text-red-300" />
           <span>Online Users</span>
           <Badge variant="secondary" className="bg-green-500/20 text-green-200 border-green-500/30">
             {users.filter(u => u.status === 'online').length}
@@ -54,11 +54,11 @@ const UserList = ({ users }: UserListProps) => {
             className={`flex items-center space-x-3 p-2 rounded-lg transition-all border ${
               user.speaking 
                 ? 'bg-green-500/20 border-green-400/40 shadow-md shadow-green-500/20' 
-                : 'hover:bg-purple-500/10 border-transparent hover:border-purple-400/20'
+                : 'hover:bg-blue-500/10 border-transparent hover:border-blue-400/20'
             }`}
           >
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-r from-pink-400 to-orange-400 rounded-full flex items-center justify-center text-white font-semibold">
+              <div className="w-10 h-10 bg-gradient-to-r from-red-400 to-red-500 rounded-full flex items-center justify-center text-white font-semibold">
                 {user.name.charAt(0)}
               </div>
               <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-800 ${getStatusColor(user.status)}`} />
@@ -71,7 +71,7 @@ const UserList = ({ users }: UserListProps) => {
                 </p>
                 <span className="text-sm">{getCountryFlag(user.country)}</span>
               </div>
-              <p className="text-xs text-pink-300 capitalize">{user.status}</p>
+              <p className="text-xs text-red-300 capitalize">{user.status}</p>
             </div>
             
             <div className="flex-shrink-0">
