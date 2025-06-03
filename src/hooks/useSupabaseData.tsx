@@ -60,42 +60,51 @@ export const useSupabaseData = () => {
 
   // Fetch participants for a specific channel
   const fetchParticipants = async (channelId: string) => {
-    // Fixed the query to properly join with profiles table
-    const { data, error } = await supabase
+    // First, get the channel participants
+    const { data: participantsData, error: participantsError } = await supabase
       .from('channel_participants')
-      .select(`
-        id,
-        channel_id,
-        user_id,
-        is_speaking,
-        profiles!channel_participants_user_id_fkey(
-          id,
-          username,
-          full_name,
-          avatar_url,
-          country
-        )
-      `)
+      .select('*')
       .eq('channel_id', channelId);
 
-    if (error) {
-      console.error('Error fetching participants:', error);
+    if (participantsError) {
+      console.error('Error fetching participants:', participantsError);
       return;
     }
 
-    // Transform the data to match our interface
-    const transformedData = data?.map(participant => ({
-      ...participant,
-      profiles: participant.profiles || {
-        id: participant.user_id,
-        username: null,
-        full_name: null,
-        avatar_url: null,
-        country: null
-      }
-    })) || [];
+    if (!participantsData || participantsData.length === 0) {
+      setParticipants([]);
+      return;
+    }
 
-    setParticipants(transformedData);
+    // Get user IDs from participants
+    const userIds = participantsData.map(p => p.user_id);
+
+    // Fetch profiles for these users
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', userIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+    }
+
+    // Combine participants with their profiles
+    const participantsWithProfiles = participantsData.map(participant => {
+      const profile = profilesData?.find(p => p.id === participant.user_id);
+      return {
+        ...participant,
+        profiles: profile || {
+          id: participant.user_id,
+          username: null,
+          full_name: null,
+          avatar_url: null,
+          country: null
+        }
+      };
+    });
+
+    setParticipants(participantsWithProfiles);
   };
 
   // Join a channel
