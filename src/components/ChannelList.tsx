@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 interface Channel {
-  id: number;
+  id: string; // Changed from number to string to match UUID
   name: string;
   users: number;
   private: boolean;

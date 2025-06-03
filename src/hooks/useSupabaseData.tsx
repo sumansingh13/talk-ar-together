@@ -60,11 +60,21 @@ export const useSupabaseData = () => {
 
   // Fetch participants for a specific channel
   const fetchParticipants = async (channelId: string) => {
+    // Fixed the query to properly join with profiles table
     const { data, error } = await supabase
       .from('channel_participants')
       .select(`
-        *,
-        profiles!inner(*)
+        id,
+        channel_id,
+        user_id,
+        is_speaking,
+        profiles!channel_participants_user_id_fkey(
+          id,
+          username,
+          full_name,
+          avatar_url,
+          country
+        )
       `)
       .eq('channel_id', channelId);
 
@@ -73,7 +83,19 @@ export const useSupabaseData = () => {
       return;
     }
 
-    setParticipants(data || []);
+    // Transform the data to match our interface
+    const transformedData = data?.map(participant => ({
+      ...participant,
+      profiles: participant.profiles || {
+        id: participant.user_id,
+        username: null,
+        full_name: null,
+        avatar_url: null,
+        country: null
+      }
+    })) || [];
+
+    setParticipants(transformedData);
   };
 
   // Join a channel
