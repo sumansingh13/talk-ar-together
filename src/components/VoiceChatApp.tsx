@@ -1,69 +1,79 @@
+
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Users, Globe, Shield, Zap } from 'lucide-react';
+import { Mic, MicOff, Users, Globe, Shield, Zap, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
+import { useSupabaseData } from '@/hooks/useSupabaseData';
 import PushToTalkButton from './PushToTalkButton';
 import ChannelList from './ChannelList';
 import UserList from './UserList';
 import TranslationPanel from './TranslationPanel';
 import VoiceEffects from './VoiceEffects';
+
 const VoiceChatApp = () => {
+  const { user, signOut } = useAuth();
+  const { 
+    channels, 
+    participants, 
+    userProfile,
+    fetchParticipants, 
+    joinChannel, 
+    updateSpeakingStatus 
+  } = useSupabaseData();
+  
   const [isConnected, setIsConnected] = useState(false);
-  const [activeChannel, setActiveChannel] = useState('General');
+  const [activeChannel, setActiveChannel] = useState('');
+  const [activeChannelId, setActiveChannelId] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [users, setUsers] = useState([{
-    id: 1,
-    name: 'Alex Johnson',
-    status: 'online' as const,
-    speaking: false,
-    country: 'US'
-  }, {
-    id: 2,
-    name: 'Maria Garcia',
-    status: 'online' as const,
-    speaking: false,
-    country: 'ES'
-  }, {
-    id: 3,
-    name: 'Hiroshi Tanaka',
-    status: 'away' as const,
-    speaking: false,
-    country: 'JP'
-  }, {
-    id: 4,
-    name: 'Emma Wilson',
-    status: 'online' as const,
-    speaking: true,
-    country: 'UK'
-  }]);
-  const channels = [{
-    id: 1,
-    name: 'General',
-    users: 12,
-    private: false
-  }, {
-    id: 2,
-    name: 'Tech Talk',
-    users: 8,
-    private: false
-  }, {
-    id: 3,
-    name: 'Gaming Zone',
-    users: 15,
-    private: false
-  }, {
-    id: 4,
-    name: 'Study Group',
-    users: 6,
-    private: true
-  }];
+
+  useEffect(() => {
+    // Set first channel as active when channels load
+    if (channels.length > 0 && !activeChannel) {
+      const firstChannel = channels[0];
+      setActiveChannel(firstChannel.name);
+      setActiveChannelId(firstChannel.id);
+      fetchParticipants(firstChannel.id);
+      if (user) {
+        joinChannel(firstChannel.id);
+      }
+    }
+  }, [channels, activeChannel, user]);
+
   useEffect(() => {
     // Simulate connection status
     const timer = setTimeout(() => setIsConnected(true), 1000);
     return () => clearTimeout(timer);
   }, []);
-  return <div className="min-h-screen bg-gradient-to-b from-blue-600 via-purple-500 via-pink-500 via-orange-400 to-red-900 text-white">
+
+  const handleChannelSelect = async (channelName: string) => {
+    const channel = channels.find(c => c.name === channelName);
+    if (channel) {
+      setActiveChannel(channelName);
+      setActiveChannelId(channel.id);
+      fetchParticipants(channel.id);
+      if (user) {
+        joinChannel(channel.id);
+      }
+    }
+  };
+
+  const handleSpeakingToggle = (speaking: boolean) => {
+    setIsSpeaking(speaking);
+    if (activeChannelId && user) {
+      updateSpeakingStatus(activeChannelId, speaking);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  const activeChannelData = channels.find(c => c.name === activeChannel);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-600 via-purple-500 via-pink-500 via-orange-400 to-red-900 text-white">
       {/* Header */}
       <div className="bg-black/20 backdrop-blur-lg border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
@@ -76,6 +86,18 @@ const VoiceChatApp = () => {
             </div>
             
             <div className="flex items-center space-x-4">
+              {user && (
+                <div className="flex items-center space-x-3">
+                  <div className="text-right">
+                    <p className="text-sm text-white">{userProfile?.full_name || 'User'}</p>
+                    <p className="text-xs text-pink-300">@{userProfile?.username || 'username'}</p>
+                  </div>
+                  <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-orange-400 rounded-full flex items-center justify-center text-white font-semibold">
+                    {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
+                  </div>
+                </div>
+              )}
+              
               <Badge variant={isConnected ? "default" : "destructive"} className="bg-green-500/20 text-green-300 border-green-500/30">
                 <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
                 {isConnected ? 'Connected' : 'Connecting...'}
@@ -88,6 +110,15 @@ const VoiceChatApp = () => {
               <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
                 <Globe className="w-5 h-5" />
               </Button>
+
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/20"
+                onClick={handleSignOut}
+              >
+                <LogOut className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -97,7 +128,16 @@ const VoiceChatApp = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Sidebar - Channels */}
           <div className="lg:col-span-1">
-            <ChannelList channels={channels} activeChannel={activeChannel} onChannelSelect={setActiveChannel} />
+            <ChannelList 
+              channels={channels.map(c => ({
+                id: c.id,
+                name: c.name,
+                users: c.participant_count || 0,
+                private: c.is_private
+              }))}
+              activeChannel={activeChannel} 
+              onChannelSelect={handleChannelSelect} 
+            />
           </div>
 
           {/* Main Chat Area */}
@@ -109,7 +149,7 @@ const VoiceChatApp = () => {
                   <span># {activeChannel}</span>
                   <Badge variant="secondary" className="bg-pink-500/20 text-pink-200 border-pink-500/30">
                     <Users className="w-4 h-4 mr-1" />
-                    {channels.find(c => c.name === activeChannel)?.users || 0} users
+                    {activeChannelData?.participant_count || 0} users
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -124,17 +164,28 @@ const VoiceChatApp = () => {
                     
                     {/* Speaking Users */}
                     <div className="space-y-2">
-                      {users.filter(user => user.speaking).map(user => <div key={user.id} className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2 border border-green-500/20">
+                      {participants.filter(p => p.is_speaking).map(participant => (
+                        <div key={participant.id} className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2 border border-green-500/20">
                           <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
                             <Mic className="w-4 h-4" />
                           </div>
-                          <span className="text-green-300">{user.name} is speaking</span>
-                        </div>)}
+                          <span className="text-green-300">{participant.profiles.full_name || participant.profiles.username} is speaking</span>
+                        </div>
+                      ))}
+                      
+                      {isSpeaking && (
+                        <div className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2 border border-green-500/20">
+                          <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
+                            <Mic className="w-4 h-4" />
+                          </div>
+                          <span className="text-green-300">You are speaking</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Push to Talk Button */}
-                  <PushToTalkButton isSpeaking={isSpeaking} onToggle={setIsSpeaking} />
+                  <PushToTalkButton isSpeaking={isSpeaking} onToggle={handleSpeakingToggle} />
 
                   {/* Voice Effects */}
                   <VoiceEffects />
@@ -148,10 +199,20 @@ const VoiceChatApp = () => {
 
           {/* Right Sidebar - Users */}
           <div className="lg:col-span-1">
-            <UserList users={users} />
+            <UserList 
+              users={participants.map(p => ({
+                id: parseInt(p.id),
+                name: p.profiles.full_name || p.profiles.username || 'Anonymous',
+                status: 'online' as const,
+                speaking: p.is_speaking,
+                country: p.profiles.country || 'US'
+              }))}
+            />
           </div>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 };
+
 export default VoiceChatApp;
