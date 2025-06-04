@@ -181,27 +181,14 @@ export const useSupabaseData = () => {
     setParticipants(participantsWithProfiles);
   };
 
-  // Fetch translations for a channel
+  // Fetch translations for a channel - temporarily using mock data since table doesn't exist yet
   const fetchTranslations = async (channelId: string) => {
-    const { data, error } = await supabase
-      .from('channel_translations')
-      .select(`
-        *,
-        profiles!channel_translations_user_id_fkey(*)
-      `)
-      .eq('channel_id', channelId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching translations:', error);
-      return;
-    }
-
-    setTranslations(data || []);
+    // For now, we'll use mock translations since the channel_translations table isn't in the schema yet
+    console.log('Fetching translations for channel:', channelId);
+    setTranslations([]);
   };
 
-  // Add translation
+  // Add translation - temporarily store in memory
   const addTranslation = async (
     channelId: string, 
     originalText: string, 
@@ -211,25 +198,27 @@ export const useSupabaseData = () => {
   ) => {
     if (!user) return { error: new Error('User not authenticated') };
 
-    const { data, error } = await supabase
-      .from('channel_translations')
-      .insert({
-        channel_id: channelId,
-        user_id: user.id,
-        original_text: originalText,
-        translated_text: translatedText,
-        from_language: fromLang,
-        to_language: toLang
-      })
-      .select()
-      .single();
+    // For now, we'll add to local state since the table doesn't exist yet
+    const newTranslation: ChannelTranslation = {
+      id: Math.random().toString(),
+      channel_id: channelId,
+      user_id: user.id,
+      original_text: originalText,
+      translated_text: translatedText,
+      from_language: fromLang,
+      to_language: toLang,
+      created_at: new Date().toISOString(),
+      profiles: userProfile || {
+        id: user.id,
+        username: null,
+        full_name: null,
+        avatar_url: null,
+        country: null
+      }
+    };
 
-    if (error) {
-      console.error('Error adding translation:', error);
-      return { error };
-    }
-
-    return { data, error: null };
+    setTranslations(prev => [newTranslation, ...prev]);
+    return { data: newTranslation, error: null };
   };
 
   // Join a channel
@@ -311,21 +300,21 @@ export const useSupabaseData = () => {
       )
       .subscribe();
 
-    // Subscribe to translation changes
-    const translationSubscription = supabase
-      .channel('translations-changes')
+    // Subscribe to participant changes
+    const participantSubscription = supabase
+      .channel('participants-changes')
       .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'channel_translations' },
+        { event: '*', schema: 'public', table: 'channel_participants' },
         (payload) => {
-          console.log('Translation change:', payload);
-          // Refetch translations for active channel if needed
+          console.log('Participant change:', payload);
+          // Refetch participants if needed
         }
       )
       .subscribe();
 
     return () => {
       channelSubscription.unsubscribe();
-      translationSubscription.unsubscribe();
+      participantSubscription.unsubscribe();
     };
   }, [user]);
 
