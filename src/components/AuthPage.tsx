@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Zap, Mail, Lock, User, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import AvatarUpload from './AvatarUpload';
+import { useSupabaseData } from '@/hooks/useSupabaseData';
 
 const AuthPage = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -15,10 +17,17 @@ const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const { signUp, signIn } = useAuth();
+  const { uploadAvatar } = useSupabaseData();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleAvatarUpload = async (file: File) => {
+    setAvatarFile(file);
+    return { data: URL.createObjectURL(file), error: null };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +51,11 @@ const AuthPage = () => {
             title: "Success!",
             description: "Please check your email to confirm your account.",
           });
+          
+          // Upload avatar after successful signup if provided
+          if (avatarFile) {
+            await uploadAvatar(avatarFile);
+          }
         }
       } else {
         const { error } = await signIn(email, password);
@@ -92,6 +106,13 @@ const AuthPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <>
+                <AvatarUpload
+                  currentAvatarUrl={avatarFile ? URL.createObjectURL(avatarFile) : null}
+                  onUpload={handleAvatarUpload}
+                  fallbackText={fullName ? fullName.charAt(0).toUpperCase() : 'U'}
+                  className="mb-4"
+                />
+                
                 <div className="space-y-2">
                   <label className="text-sm text-pink-200 flex items-center">
                     <User className="w-4 h-4 mr-2" />

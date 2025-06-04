@@ -4,23 +4,28 @@ import { Mic, MicOff, Users, Globe, Shield, Zap, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import PushToTalkButton from './PushToTalkButton';
 import ChannelList from './ChannelList';
 import UserList from './UserList';
-import TranslationPanel from './TranslationPanel';
 import VoiceEffects from './VoiceEffects';
+import RealTimeTranslation from './RealTimeTranslation';
 
 const VoiceChatApp = () => {
   const { user, signOut } = useAuth();
   const { 
     channels, 
     participants, 
+    translations,
     userProfile,
     fetchParticipants, 
+    fetchTranslations,
     joinChannel, 
-    updateSpeakingStatus 
+    updateSpeakingStatus,
+    createChannel,
+    addTranslation
   } = useSupabaseData();
   
   const [isConnected, setIsConnected] = useState(false);
@@ -29,12 +34,12 @@ const VoiceChatApp = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
-    // Set first channel as active when channels load
     if (channels.length > 0 && !activeChannel) {
       const firstChannel = channels[0];
       setActiveChannel(firstChannel.name);
       setActiveChannelId(firstChannel.id);
       fetchParticipants(firstChannel.id);
+      fetchTranslations(firstChannel.id);
       if (user) {
         joinChannel(firstChannel.id);
       }
@@ -42,7 +47,6 @@ const VoiceChatApp = () => {
   }, [channels, activeChannel, user]);
 
   useEffect(() => {
-    // Simulate connection status
     const timer = setTimeout(() => setIsConnected(true), 1000);
     return () => clearTimeout(timer);
   }, []);
@@ -53,6 +57,7 @@ const VoiceChatApp = () => {
       setActiveChannel(channelName);
       setActiveChannelId(channel.id);
       fetchParticipants(channel.id);
+      fetchTranslations(channel.id);
       if (user) {
         joinChannel(channel.id);
       }
@@ -68,6 +73,17 @@ const VoiceChatApp = () => {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleCreateChannel = async (name: string, description?: string, isPrivate?: boolean) => {
+    return await createChannel(name, description, isPrivate);
+  };
+
+  const handleTranslationReceived = async (originalText: string, translatedText: string, fromLang: string, toLang: string) => {
+    if (activeChannelId) {
+      await addTranslation(activeChannelId, originalText, translatedText, fromLang, toLang);
+      fetchTranslations(activeChannelId);
+    }
   };
 
   const activeChannelData = channels.find(c => c.name === activeChannel);
@@ -92,9 +108,12 @@ const VoiceChatApp = () => {
                     <p className="text-sm text-white">{userProfile?.full_name || 'User'}</p>
                     <p className="text-xs text-red-300">@{userProfile?.username || 'username'}</p>
                   </div>
-                  <div className="w-8 h-8 bg-gradient-to-r from-red-400 to-red-500 rounded-full flex items-center justify-center text-white font-semibold">
-                    {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={userProfile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-gradient-to-r from-red-400 to-red-500 text-white font-semibold">
+                      {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
               )}
               
@@ -136,7 +155,8 @@ const VoiceChatApp = () => {
                 private: c.is_private
               }))}
               activeChannel={activeChannel} 
-              onChannelSelect={handleChannelSelect} 
+              onChannelSelect={handleChannelSelect}
+              onCreateChannel={handleCreateChannel}
             />
           </div>
 
@@ -193,8 +213,40 @@ const VoiceChatApp = () => {
               </CardContent>
             </Card>
 
-            {/* Translation Panel */}
-            <TranslationPanel />
+            {/* Real-time Translation */}
+            <RealTimeTranslation 
+              isActive={isConnected}
+              onTranslationReceived={handleTranslationReceived}
+            />
+
+            {/* Translation History */}
+            {translations.length > 0 && (
+              <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
+                <CardHeader>
+                  <CardTitle className="text-red-200">Recent Translations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {translations.slice(0, 10).map(translation => (
+                      <div key={translation.id} className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-blue-300">
+                            {translation.profiles?.full_name || 'Anonymous'}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {translation.from_language.toUpperCase()} → {translation.to_language.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-300">{translation.original_text}</p>
+                          <p className="text-sm text-white font-medium">{translation.translated_text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Right Sidebar - Users */}
@@ -205,7 +257,8 @@ const VoiceChatApp = () => {
                 name: p.profiles.full_name || p.profiles.username || 'Anonymous',
                 status: 'online' as const,
                 speaking: p.is_speaking,
-                country: p.profiles.country || 'US'
+                country: p.profiles.country || 'US',
+                avatar: p.profiles.avatar_url
               }))}
             />
           </div>

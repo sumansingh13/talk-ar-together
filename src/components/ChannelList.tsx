@@ -4,6 +4,7 @@ import { Hash, Lock, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import CreateChannelDialog from './CreateChannelDialog';
 
 interface Channel {
   id: string;
@@ -16,9 +17,10 @@ interface ChannelListProps {
   channels: Channel[];
   activeChannel: string;
   onChannelSelect: (channel: string) => void;
+  onCreateChannel: (name: string, description?: string, isPrivate?: boolean) => Promise<{ error: any }>;
 }
 
-const ChannelList = ({ channels, activeChannel, onChannelSelect }: ChannelListProps) => {
+const ChannelList = ({ channels, activeChannel, onChannelSelect, onCreateChannel }: ChannelListProps) => {
   return (
     <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
       <CardHeader>
@@ -56,10 +58,7 @@ const ChannelList = ({ channels, activeChannel, onChannelSelect }: ChannelListPr
           </Button>
         ))}
         
-        <Button variant="ghost" className="w-full justify-start text-red-300 hover:bg-blue-500/20 hover:text-red-200 border border-transparent hover:border-blue-400/30">
-          <span className="text-2xl mr-2 text-red-400">+</span>
-          <span>Create Channel</span>
-        </Button>
+        <CreateChannelDialog onCreateChannel={onCreateChannel} />
       </CardContent>
     </Card>
   );

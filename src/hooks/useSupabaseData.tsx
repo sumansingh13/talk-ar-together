@@ -28,10 +28,23 @@ interface ChannelParticipant {
   profiles: Profile;
 }
 
+interface ChannelTranslation {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  original_text: string;
+  translated_text: string;
+  from_language: string;
+  to_language: string;
+  created_at: string;
+  profiles: Profile;
+}
+
 export const useSupabaseData = () => {
   const { user } = useAuth();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [participants, setParticipants] = useState<ChannelParticipant[]>([]);
+  const [translations, setTranslations] = useState<ChannelTranslation[]>([]);
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,9 +71,73 @@ export const useSupabaseData = () => {
     setChannels(channelsWithCount);
   };
 
+  // Create a new channel
+  const createChannel = async (name: string, description?: string, isPrivate: boolean = false) => {
+    if (!user) return { error: new Error('User not authenticated') };
+
+    const { data, error } = await supabase
+      .from('channels')
+      .insert({
+        name,
+        description,
+        is_private: isPrivate,
+        created_by: user.id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating channel:', error);
+      return { error };
+    }
+
+    // Auto-join the creator to the channel
+    await joinChannel(data.id);
+    await fetchChannels();
+    
+    return { data, error: null };
+  };
+
+  // Upload avatar
+  const uploadAvatar = async (file: File) => {
+    if (!user) return { error: new Error('User not authenticated') };
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Math.random()}.${fileExt}`;
+
+    const { data, error } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, {
+        upsert: true
+      });
+
+    if (error) {
+      console.error('Error uploading avatar:', error);
+      return { error };
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    // Update profile with avatar URL
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ avatar_url: publicUrl })
+      .eq('id', user.id);
+
+    if (updateError) {
+      console.error('Error updating profile with avatar:', updateError);
+      return { error: updateError };
+    }
+
+    await fetchUserProfile();
+    return { data: publicUrl, error: null };
+  };
+
   // Fetch participants for a specific channel
   const fetchParticipants = async (channelId: string) => {
-    // First, get the channel participants
     const { data: participantsData, error: participantsError } = await supabase
       .from('channel_participants')
       .select('*')
@@ -76,10 +153,8 @@ export const useSupabaseData = () => {
       return;
     }
 
-    // Get user IDs from participants
     const userIds = participantsData.map(p => p.user_id);
 
-    // Fetch profiles for these users
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
       .select('*')
@@ -89,7 +164,6 @@ export const useSupabaseData = () => {
       console.error('Error fetching profiles:', profilesError);
     }
 
-    // Combine participants with their profiles
     const participantsWithProfiles = participantsData.map(participant => {
       const profile = profilesData?.find(p => p.id === participant.user_id);
       return {
@@ -105,6 +179,57 @@ export const useSupabaseData = () => {
     });
 
     setParticipants(participantsWithProfiles);
+  };
+
+  // Fetch translations for a channel
+  const fetchTranslations = async (channelId: string) => {
+    const { data, error } = await supabase
+      .from('channel_translations')
+      .select(`
+        *,
+        profiles!channel_translations_user_id_fkey(*)
+      `)
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Error fetching translations:', error);
+      return;
+    }
+
+    setTranslations(data || []);
+  };
+
+  // Add translation
+  const addTranslation = async (
+    channelId: string, 
+    originalText: string, 
+    translatedText: string, 
+    fromLang: string = 'en', 
+    toLang: string = 'es'
+  ) => {
+    if (!user) return { error: new Error('User not authenticated') };
+
+    const { data, error } = await supabase
+      .from('channel_translations')
+      .insert({
+        channel_id: channelId,
+        user_id: user.id,
+        original_text: originalText,
+        translated_text: translatedText,
+        from_language: fromLang,
+        to_language: toLang
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding translation:', error);
+      return { error };
+    }
+
+    return { data, error: null };
   };
 
   // Join a channel
@@ -171,6 +296,39 @@ export const useSupabaseData = () => {
     setUserProfile(data);
   };
 
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!user) return;
+
+    // Subscribe to channel changes
+    const channelSubscription = supabase
+      .channel('channels-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'channels' },
+        () => {
+          fetchChannels();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to translation changes
+    const translationSubscription = supabase
+      .channel('translations-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'channel_translations' },
+        (payload) => {
+          console.log('Translation change:', payload);
+          // Refetch translations for active channel if needed
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channelSubscription.unsubscribe();
+      translationSubscription.unsubscribe();
+    };
+  }, [user]);
+
   useEffect(() => {
     if (user) {
       fetchChannels();
@@ -182,10 +340,15 @@ export const useSupabaseData = () => {
   return {
     channels,
     participants,
+    translations,
     userProfile,
     loading,
     fetchChannels,
     fetchParticipants,
+    fetchTranslations,
+    createChannel,
+    uploadAvatar,
+    addTranslation,
     joinChannel,
     leaveChannel,
     updateSpeakingStatus,
