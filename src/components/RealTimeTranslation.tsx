@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Mic, MicOff, Languages } from 'lucide-react';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useTranslationAPI } from '@/hooks/useTranslationAPI';
 
 interface RealTimeTranslationProps {
   isActive: boolean;
@@ -21,7 +22,11 @@ const languages = [
   { code: 'ru', name: 'Russian' },
   { code: 'ja', name: 'Japanese' },
   { code: 'ko', name: 'Korean' },
-  { code: 'zh', name: 'Chinese' }
+  { code: 'zh', name: 'Chinese' },
+  { code: 'hi', name: 'Hindi' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'ne', name: 'Nepali' },
+  { code: 'mai', name: 'Maithili' }
 ];
 
 const RealTimeTranslation = ({ isActive, onTranslationReceived }: RealTimeTranslationProps) => {
@@ -44,28 +49,19 @@ const RealTimeTranslation = ({ isActive, onTranslationReceived }: RealTimeTransl
     language: sourceLanguage
   });
 
-  // Mock translation function (replace with actual translation API)
-  const translateText = async (text: string, fromLang: string, toLang: string): Promise<string> => {
-    // This is a mock translation - in a real app, you'd call a translation API
-    const translations: Record<string, Record<string, string>> = {
-      'hello': { 'es': 'hola', 'fr': 'bonjour', 'de': 'hallo' },
-      'goodbye': { 'es': 'adiós', 'fr': 'au revoir', 'de': 'auf wiedersehen' },
-      'thank you': { 'es': 'gracias', 'fr': 'merci', 'de': 'danke' }
-    };
-    
-    const lowerText = text.toLowerCase();
-    return translations[lowerText]?.[toLang] || `[${toLang.toUpperCase()}] ${text}`;
-  };
+  const { translateText, isTranslating } = useTranslationAPI();
 
   // Handle completed speech recognition
   useEffect(() => {
     if (transcript && isTranslationActive) {
       translateText(transcript, sourceLanguage, targetLanguage).then(translatedText => {
-        onTranslationReceived(transcript, translatedText, sourceLanguage, targetLanguage);
-        resetTranscript();
+        if (translatedText) {
+          onTranslationReceived(transcript, translatedText, sourceLanguage, targetLanguage);
+          resetTranscript();
+        }
       });
     }
-  }, [transcript, isTranslationActive, sourceLanguage, targetLanguage, onTranslationReceived, resetTranscript]);
+  }, [transcript, isTranslationActive, sourceLanguage, targetLanguage, onTranslationReceived, resetTranscript, translateText]);
 
   const toggleTranslation = () => {
     if (isTranslationActive) {
@@ -138,14 +134,19 @@ const RealTimeTranslation = ({ isActive, onTranslationReceived }: RealTimeTransl
 
         <Button
           onClick={toggleTranslation}
-          disabled={!isActive}
+          disabled={!isActive || isTranslating}
           className={`w-full ${
             isTranslationActive
               ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
               : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
           } text-white`}
         >
-          {isTranslationActive ? (
+          {isTranslating ? (
+            <>
+              <Languages className="w-4 h-4 mr-2 animate-spin" />
+              Translating...
+            </>
+          ) : isTranslationActive ? (
             <>
               <MicOff className="w-4 h-4 mr-2" />
               Stop Translation

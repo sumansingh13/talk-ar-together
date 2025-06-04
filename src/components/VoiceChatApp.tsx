@@ -12,6 +12,8 @@ import ChannelList from './ChannelList';
 import UserList from './UserList';
 import VoiceEffects from './VoiceEffects';
 import RealTimeTranslation from './RealTimeTranslation';
+import VoiceMessaging from './VoiceMessaging';
+import WalkieTalkieButton from './WalkieTalkieButton';
 
 const VoiceChatApp = () => {
   const { user, signOut } = useAuth();
@@ -87,6 +89,7 @@ const VoiceChatApp = () => {
   };
 
   const activeChannelData = channels.find(c => c.name === activeChannel);
+  const connectedUserIds = participants.map(p => p.user_id).filter(Boolean) as string[];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 via-purple-700 via-red-600 to-red-700 text-white">
@@ -204,14 +207,24 @@ const VoiceChatApp = () => {
                     </div>
                   </div>
 
-                  {/* Push to Talk Button */}
-                  <PushToTalkButton isSpeaking={isSpeaking} onToggle={handleSpeakingToggle} />
+                  {/* Walkie-Talkie Button */}
+                  <WalkieTalkieButton 
+                    channelId={activeChannelId}
+                    onTransmissionStart={() => handleSpeakingToggle(true)}
+                    onTransmissionEnd={() => handleSpeakingToggle(false)}
+                  />
 
                   {/* Voice Effects */}
                   <VoiceEffects />
                 </div>
               </CardContent>
             </Card>
+
+            {/* Voice Messaging */}
+            <VoiceMessaging 
+              channelId={activeChannelId}
+              recipientIds={connectedUserIds}
+            />
 
             {/* Real-time Translation */}
             <RealTimeTranslation 
