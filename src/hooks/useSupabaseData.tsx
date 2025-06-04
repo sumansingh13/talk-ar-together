@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -181,14 +180,54 @@ export const useSupabaseData = () => {
     setParticipants(participantsWithProfiles);
   };
 
-  // Fetch translations for a channel - temporarily using mock data since table doesn't exist yet
+  // Fetch translations for a channel
   const fetchTranslations = async (channelId: string) => {
-    // For now, we'll use mock translations since the channel_translations table isn't in the schema yet
-    console.log('Fetching translations for channel:', channelId);
-    setTranslations([]);
+    const { data: translationsData, error: translationsError } = await supabase
+      .from('channel_translations')
+      .select('*')
+      .eq('channel_id', channelId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (translationsError) {
+      console.error('Error fetching translations:', translationsError);
+      return;
+    }
+
+    if (!translationsData || translationsData.length === 0) {
+      setTranslations([]);
+      return;
+    }
+
+    const userIds = translationsData.map(t => t.user_id);
+
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', userIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles for translations:', profilesError);
+    }
+
+    const translationsWithProfiles = translationsData.map(translation => {
+      const profile = profilesData?.find(p => p.id === translation.user_id);
+      return {
+        ...translation,
+        profiles: profile || {
+          id: translation.user_id,
+          username: null,
+          full_name: null,
+          avatar_url: null,
+          country: null
+        }
+      };
+    });
+
+    setTranslations(translationsWithProfiles);
   };
 
-  // Add translation - temporarily store in memory
+  // Add translation
   const addTranslation = async (
     channelId: string, 
     originalText: string, 
@@ -198,27 +237,27 @@ export const useSupabaseData = () => {
   ) => {
     if (!user) return { error: new Error('User not authenticated') };
 
-    // For now, we'll add to local state since the table doesn't exist yet
-    const newTranslation: ChannelTranslation = {
-      id: Math.random().toString(),
-      channel_id: channelId,
-      user_id: user.id,
-      original_text: originalText,
-      translated_text: translatedText,
-      from_language: fromLang,
-      to_language: toLang,
-      created_at: new Date().toISOString(),
-      profiles: userProfile || {
-        id: user.id,
-        username: null,
-        full_name: null,
-        avatar_url: null,
-        country: null
-      }
-    };
+    const { data, error } = await supabase
+      .from('channel_translations')
+      .insert({
+        channel_id: channelId,
+        user_id: user.id,
+        original_text: originalText,
+        translated_text: translatedText,
+        from_language: fromLang,
+        to_language: toLang
+      })
+      .select()
+      .single();
 
-    setTranslations(prev => [newTranslation, ...prev]);
-    return { data: newTranslation, error: null };
+    if (error) {
+      console.error('Error adding translation:', error);
+      return { error };
+    }
+
+    // Refresh translations after adding a new one
+    await fetchTranslations(channelId);
+    return { data, error: null };
   };
 
   // Join a channel
@@ -312,9 +351,22 @@ export const useSupabaseData = () => {
       )
       .subscribe();
 
+    // Subscribe to translation changes
+    const translationSubscription = supabase
+      .channel('translations-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'channel_translations' },
+        (payload) => {
+          console.log('Translation change:', payload);
+          // Refetch translations for active channel if needed
+        }
+      )
+      .subscribe();
+
     return () => {
       channelSubscription.unsubscribe();
       participantSubscription.unsubscribe();
+      translationSubscription.unsubscribe();
     };
   }, [user]);
 

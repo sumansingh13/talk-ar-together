@@ -41,6 +41,47 @@ export type Database = {
           },
         ]
       }
+      channel_translations: {
+        Row: {
+          channel_id: string
+          created_at: string
+          from_language: string
+          id: string
+          original_text: string
+          to_language: string
+          translated_text: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          from_language?: string
+          id?: string
+          original_text: string
+          to_language?: string
+          translated_text: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          from_language?: string
+          id?: string
+          original_text?: string
+          to_language?: string
+          translated_text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_translations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           created_at: string
