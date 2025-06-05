@@ -17,9 +17,16 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const audioContextRef = useRef<AudioContext | null>(null);
+  const channelRef = useRef<any>(null);
 
   const initializeAudio = useCallback(async () => {
     try {
+      // Clean up any existing channel first
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -34,8 +41,12 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
       localStreamRef.current = stream;
       audioContextRef.current = new AudioContext({ sampleRate: 48000 });
       
-      // Subscribe to channel for signaling
-      const channel = supabase.channel(`voice-${config.channelId}`)
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Subscribe to channel for signaling with unique name
+      const channel = supabase.channel(`voice-${config.channelId}-${user.id}`)
         .on('broadcast', { event: 'offer' }, handleOffer)
         .on('broadcast', { event: 'answer' }, handleAnswer)
         .on('broadcast', { event: 'ice-candidate' }, handleIceCandidate)
@@ -43,11 +54,13 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
         .on('broadcast', { event: 'user-left' }, handleUserLeft)
         .subscribe();
 
+      channelRef.current = channel;
+
       // Announce presence
       channel.send({
         type: 'broadcast',
         event: 'user-joined',
-        payload: { userId: (await supabase.auth.getUser()).data.user?.id }
+        payload: { userId: user.id }
       });
 
       setIsConnected(true);
@@ -75,13 +88,14 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
     await peerConnection.setLocalDescription(answer);
 
     // Send answer back
-    const channel = supabase.channel(`voice-${config.channelId}`);
-    channel.send({
-      type: 'broadcast',
-      event: 'answer',
-      payload: { answer, toUserId: fromUserId }
-    });
-  }, [config.channelId]);
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'answer',
+        payload: { answer, toUserId: fromUserId }
+      });
+    }
+  }, []);
 
   const handleAnswer = useCallback(async (payload: any) => {
     const { answer, toUserId } = payload;
@@ -117,16 +131,17 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    const channel = supabase.channel(`voice-${config.channelId}`);
-    channel.send({
-      type: 'broadcast',
-      event: 'offer',
-      payload: { offer, fromUserId: userId }
-    });
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'offer',
+        payload: { offer, fromUserId: userId }
+      });
+    }
 
     setConnectedUsers(prev => [...prev, userId]);
     config.onRemoteUserConnected?.(userId);
-  }, [config.channelId, config.onRemoteUserConnected]);
+  }, [config.onRemoteUserConnected]);
 
   const handleUserLeft = useCallback((payload: any) => {
     const { userId } = payload;
@@ -150,9 +165,8 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
     });
 
     peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        const channel = supabase.channel(`voice-${config.channelId}`);
-        channel.send({
+      if (event.candidate && channelRef.current) {
+        channelRef.current.send({
           type: 'broadcast',
           event: 'ice-candidate',
           payload: { candidate: event.candidate, fromUserId: userId }
@@ -178,7 +192,7 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
     };
 
     return peerConnection;
-  }, [config.channelId, config.onAudioReceived]);
+  }, [config.onAudioReceived]);
 
   const startRecording = useCallback(() => {
     if (localStreamRef.current) {
@@ -215,6 +229,12 @@ export const useWebRTCAudio = (config: WebRTCAudioConfig) => {
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
+    }
+
+    // Clean up channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
 
     setIsConnected(false);

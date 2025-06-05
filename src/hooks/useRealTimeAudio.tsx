@@ -20,6 +20,12 @@ export const useRealTimeAudio = (channelId: string) => {
 
   const initializeAudio = useCallback(async () => {
     try {
+      // Clean up any existing channel first
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+
       // Get user media
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -34,8 +40,12 @@ export const useRealTimeAudio = (channelId: string) => {
       streamRef.current = stream;
       audioContextRef.current = new AudioContext({ sampleRate: 48000 });
 
-      // Set up real-time channel for audio transmission
-      const channel = supabase.channel(`audio-${channelId}`)
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      // Set up real-time channel for audio transmission with unique name
+      const channel = supabase.channel(`audio-${channelId}-${user.id}`)
         .on('broadcast', { event: 'audio-chunk' }, handleAudioChunk)
         .on('broadcast', { event: 'user-joined' }, handleUserJoined)
         .on('broadcast', { event: 'user-left' }, handleUserLeft)
@@ -44,14 +54,11 @@ export const useRealTimeAudio = (channelId: string) => {
       channelRef.current = channel;
 
       // Announce presence
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        channel.send({
-          type: 'broadcast',
-          event: 'user-joined',
-          payload: { userId: user.id }
-        });
-      }
+      channel.send({
+        type: 'broadcast',
+        event: 'user-joined',
+        payload: { userId: user.id }
+      });
 
       return true;
     } catch (error) {
@@ -149,7 +156,8 @@ export const useRealTimeAudio = (channelId: string) => {
       audioContextRef.current.close();
     }
     if (channelRef.current) {
-      channelRef.current.unsubscribe();
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
   }, []);
 
