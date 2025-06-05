@@ -324,13 +324,15 @@ export const useSupabaseData = () => {
     setUserProfile(data);
   };
 
-  // Set up real-time subscriptions
+  // Set up real-time subscriptions with proper cleanup
   useEffect(() => {
     if (!user) return;
 
-    // Subscribe to channel changes
+    const subscriptions: any[] = [];
+
+    // Create unique channel names to avoid conflicts
     const channelSubscription = supabase
-      .channel('channels-changes')
+      .channel(`channels-changes-${user.id}`)
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'channels' },
         () => {
@@ -339,9 +341,10 @@ export const useSupabaseData = () => {
       )
       .subscribe();
 
-    // Subscribe to participant changes
+    subscriptions.push(channelSubscription);
+
     const participantSubscription = supabase
-      .channel('participants-changes')
+      .channel(`participants-changes-${user.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'channel_participants' },
         (payload) => {
@@ -351,9 +354,10 @@ export const useSupabaseData = () => {
       )
       .subscribe();
 
-    // Subscribe to translation changes
+    subscriptions.push(participantSubscription);
+
     const translationSubscription = supabase
-      .channel('translations-changes')
+      .channel(`translations-changes-${user.id}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'channel_translations' },
         (payload) => {
@@ -363,10 +367,13 @@ export const useSupabaseData = () => {
       )
       .subscribe();
 
+    subscriptions.push(translationSubscription);
+
     return () => {
-      channelSubscription.unsubscribe();
-      participantSubscription.unsubscribe();
-      translationSubscription.unsubscribe();
+      // Proper cleanup of all subscriptions
+      subscriptions.forEach(subscription => {
+        supabase.removeChannel(subscription);
+      });
     };
   }, [user]);
 
