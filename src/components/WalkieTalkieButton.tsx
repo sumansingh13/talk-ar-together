@@ -15,12 +15,11 @@ const WalkieTalkieButton = ({
   onTransmissionStart, 
   onTransmissionEnd 
 }: WalkieTalkieButtonProps) => {
-  const [isInitialized, setIsInitialized] = useState(false);
-  
   const {
     isTransmitting,
     isReceiving,
     connectedUsers,
+    isInitialized,
     initializeAudio,
     startTransmission,
     stopTransmission,
@@ -29,11 +28,9 @@ const WalkieTalkieButton = ({
 
   const handleInitialize = async () => {
     if (!isInitialized) {
-      const success = await initializeAudio();
-      setIsInitialized(success);
+      await initializeAudio();
     } else {
-      cleanup();
-      setIsInitialized(false);
+      await cleanup();
     }
   };
 

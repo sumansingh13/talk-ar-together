@@ -12,19 +12,25 @@ export const useRealTimeAudio = (channelId: string) => {
   const [isTransmitting, setIsTransmitting] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const channelRef = useRef<any>(null);
+  const isInitializingRef = useRef(false);
 
   const initializeAudio = useCallback(async () => {
+    // Prevent multiple simultaneous initializations
+    if (isInitializingRef.current || isInitialized) {
+      return isInitialized;
+    }
+
+    isInitializingRef.current = true;
+
     try {
-      // Clean up any existing channel first
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
+      // Clean up any existing resources first
+      await cleanup();
 
       // Get user media
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -42,27 +48,50 @@ export const useRealTimeAudio = (channelId: string) => {
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
+      if (!user) {
+        isInitializingRef.current = false;
+        return false;
+      }
 
-      // Set up real-time channel for audio transmission with unique name
-      const channel = supabase.channel(`audio-${channelId}-${user.id}`)
-        .on('broadcast', { event: 'audio-chunk' }, handleAudioChunk)
-        .on('broadcast', { event: 'user-joined' }, handleUserJoined)
-        .on('broadcast', { event: 'user-left' }, handleUserLeft)
-        .subscribe();
+      // Create a unique channel name to avoid conflicts
+      const uniqueChannelName = `audio-${channelId}-${user.id}-${Date.now()}`;
+      
+      // Set up real-time channel for audio transmission
+      const channel = supabase.channel(uniqueChannelName);
 
+      // Store channel reference before subscribing
       channelRef.current = channel;
 
-      // Announce presence
-      channel.send({
-        type: 'broadcast',
-        event: 'user-joined',
-        payload: { userId: user.id }
-      });
+      // Set up event handlers before subscribing
+      channel
+        .on('broadcast', { event: 'audio-chunk' }, handleAudioChunk)
+        .on('broadcast', { event: 'user-joined' }, handleUserJoined)
+        .on('broadcast', { event: 'user-left' }, handleUserLeft);
 
-      return true;
+      // Subscribe to the channel
+      const subscriptionResult = await channel.subscribe();
+      
+      if (subscriptionResult === 'SUBSCRIBED') {
+        // Announce presence after successful subscription
+        channel.send({
+          type: 'broadcast',
+          event: 'user-joined',
+          payload: { userId: user.id }
+        });
+
+        setIsInitialized(true);
+        isInitializingRef.current = false;
+        return true;
+      } else {
+        console.error('Failed to subscribe to channel:', subscriptionResult);
+        await cleanup();
+        isInitializingRef.current = false;
+        return false;
+      }
     } catch (error) {
       console.error('Failed to initialize audio:', error);
+      await cleanup();
+      isInitializingRef.current = false;
       return false;
     }
   }, [channelId]);
@@ -105,7 +134,7 @@ export const useRealTimeAudio = (channelId: string) => {
   }, []);
 
   const startTransmission = useCallback(async () => {
-    if (!streamRef.current || !channelRef.current) return;
+    if (!streamRef.current || !channelRef.current || !isInitialized) return;
 
     setIsTransmitting(true);
 
@@ -115,7 +144,7 @@ export const useRealTimeAudio = (channelId: string) => {
     });
 
     mediaRecorderRef.current.ondataavailable = async (event) => {
-      if (event.data.size > 0) {
+      if (event.data.size > 0 && channelRef.current) {
         // Convert audio to base64 for transmission
         const arrayBuffer = await event.data.arrayBuffer();
         const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
@@ -123,7 +152,7 @@ export const useRealTimeAudio = (channelId: string) => {
         const { data: { user } } = await supabase.auth.getUser();
         
         // Send audio chunk to other users
-        channelRef.current?.send({
+        channelRef.current.send({
           type: 'broadcast',
           event: 'audio-chunk',
           payload: {
@@ -136,7 +165,7 @@ export const useRealTimeAudio = (channelId: string) => {
     };
 
     mediaRecorderRef.current.start(100); // Send chunks every 100ms
-  }, []);
+  }, [isInitialized]);
 
   const stopTransmission = useCallback(() => {
     if (mediaRecorderRef.current && isTransmitting) {
@@ -145,30 +174,54 @@ export const useRealTimeAudio = (channelId: string) => {
     }
   }, [isTransmitting]);
 
-  const cleanup = useCallback(() => {
+  const cleanup = useCallback(async () => {
+    // Stop media recorder
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
     }
+
+    // Stop media stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
+
+    // Close audio context
     if (audioContextRef.current) {
-      audioContextRef.current.close();
+      await audioContextRef.current.close();
+      audioContextRef.current = null;
     }
+
+    // Clean up channel
     if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
+      try {
+        await supabase.removeChannel(channelRef.current);
+      } catch (error) {
+        console.error('Error removing channel:', error);
+      }
       channelRef.current = null;
     }
+
+    // Reset state
+    setIsInitialized(false);
+    setIsTransmitting(false);
+    setIsReceiving(false);
+    setConnectedUsers([]);
+    isInitializingRef.current = false;
   }, []);
 
   useEffect(() => {
-    return cleanup;
+    return () => {
+      cleanup();
+    };
   }, [cleanup]);
 
   return {
     isTransmitting,
     isReceiving,
     connectedUsers,
+    isInitialized,
     initializeAudio,
     startTransmission,
     stopTransmission,
