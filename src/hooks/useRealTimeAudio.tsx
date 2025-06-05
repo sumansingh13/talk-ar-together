@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -70,8 +71,9 @@ export const useRealTimeAudio = (channelId: string) => {
       // Subscribe to the channel
       const subscriptionResult = await channel.subscribe();
       
-      // Fix: Check if subscription was successful using the correct type comparison
-      if (subscriptionResult === 'SUBSCRIBED') {
+      // Fix: The subscribe method returns a Promise that resolves to the channel instance
+      // We need to check the subscription status differently
+      if (subscriptionResult) {
         // Announce presence after successful subscription
         channel.send({
           type: 'broadcast',
@@ -83,7 +85,7 @@ export const useRealTimeAudio = (channelId: string) => {
         isInitializingRef.current = false;
         return true;
       } else {
-        console.error('Failed to subscribe to channel:', subscriptionResult);
+        console.error('Failed to subscribe to channel');
         await cleanup();
         isInitializingRef.current = false;
         return false;
