@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -24,15 +24,15 @@ export const useFriends = () => {
   const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchFriends = async () => {
+  const fetchFriends = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Get accepted friends
+      // Get accepted friends where user is either the requester or the receiver
       const { data: friendsData, error: friendsError } = await supabase
         .from('friendships')
         .select('*')
-        .eq('user_id', user.id)
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
         .eq('status', 'accepted');
 
       if (friendsError) {
@@ -45,8 +45,12 @@ export const useFriends = () => {
         return;
       }
 
+      // Get the friend IDs (the other person in the friendship)
+      const friendIds = friendsData.map(friendship => 
+        friendship.user_id === user.id ? friendship.friend_id : friendship.user_id
+      );
+
       // Fetch profiles for friends
-      const friendIds = friendsData.map(f => f.friend_id);
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -59,12 +63,14 @@ export const useFriends = () => {
 
       // Combine friendship data with profiles
       const friendsWithProfiles = friendsData.map(friendship => {
-        const profile = profilesData?.find(p => p.id === friendship.friend_id);
+        const friendId = friendship.user_id === user.id ? friendship.friend_id : friendship.user_id;
+        const profile = profilesData?.find(p => p.id === friendId);
         return {
           ...friendship,
+          friend_id: friendId,
           status: friendship.status as 'pending' | 'accepted' | 'blocked',
           profiles: profile || {
-            id: friendship.friend_id,
+            id: friendId,
             username: null,
             full_name: null,
             avatar_url: null,
@@ -77,13 +83,13 @@ export const useFriends = () => {
     } catch (error) {
       console.error('Error in fetchFriends:', error);
     }
-  };
+  }, [user]);
 
-  const fetchPendingRequests = async () => {
+  const fetchPendingRequests = useCallback(async () => {
     if (!user) return;
 
     try {
-      // Get pending requests sent to the current user
+      // Get pending requests sent TO the current user
       const { data: requestsData, error: requestsError } = await supabase
         .from('friendships')
         .select('*')
@@ -132,28 +138,32 @@ export const useFriends = () => {
     } catch (error) {
       console.error('Error in fetchPendingRequests:', error);
     }
-  };
+  }, [user]);
 
-  const sendFriendRequest = async (friendEmail: string) => {
+  const sendFriendRequest = useCallback(async (friendId: string) => {
     if (!user) return { error: new Error('Not authenticated') };
 
     try {
-      // Find user by email (assuming email lookup, adjust as needed)
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', friendEmail) // This might need adjustment based on your lookup logic
+      // Check if friendship already exists
+      const { data: existingFriendship, error: checkError } = await supabase
+        .from('friendships')
+        .select('*')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
         .single();
 
-      if (profileError) {
-        return { error: new Error('User not found') };
+      if (checkError && checkError.code !== 'PGRST116') {
+        return { error: checkError };
+      }
+
+      if (existingFriendship) {
+        return { error: new Error('Friendship already exists') };
       }
 
       const { data, error } = await supabase
         .from('friendships')
         .insert({
           user_id: user.id,
-          friend_id: profiles.id,
+          friend_id: friendId,
           status: 'pending'
         })
         .select()
@@ -167,9 +177,9 @@ export const useFriends = () => {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, [user]);
 
-  const acceptFriendRequest = async (requestId: string) => {
+  const acceptFriendRequest = useCallback(async (requestId: string) => {
     try {
       const { error } = await supabase
         .from('friendships')
@@ -186,9 +196,9 @@ export const useFriends = () => {
     } catch (error) {
       console.error('Error in acceptFriendRequest:', error);
     }
-  };
+  }, [fetchFriends, fetchPendingRequests]);
 
-  const removeFriend = async (friendshipId: string) => {
+  const removeFriend = useCallback(async (friendshipId: string) => {
     try {
       const { error } = await supabase
         .from('friendships')
@@ -204,7 +214,7 @@ export const useFriends = () => {
     } catch (error) {
       console.error('Error in removeFriend:', error);
     }
-  };
+  }, [fetchFriends]);
 
   useEffect(() => {
     if (user) {
@@ -212,7 +222,7 @@ export const useFriends = () => {
       fetchPendingRequests();
       setLoading(false);
     }
-  }, [user]);
+  }, [user, fetchFriends, fetchPendingRequests]);
 
   return {
     friends,
@@ -221,9 +231,9 @@ export const useFriends = () => {
     sendFriendRequest,
     acceptFriendRequest,
     removeFriend,
-    refetch: () => {
+    refetch: useCallback(() => {
       fetchFriends();
       fetchPendingRequests();
-    }
+    }, [fetchFriends, fetchPendingRequests])
   };
 };

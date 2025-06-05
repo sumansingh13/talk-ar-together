@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Users, Globe, Shield, Zap, LogOut, User, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,9 @@ import UserList from './UserList';
 import VoiceEffects from './VoiceEffects';
 import WalkieTalkieButton from './WalkieTalkieButton';
 import UserProfileModal from './UserProfileModal';
-import ImprovedVoiceMessaging from './ImprovedVoiceMessaging';
+import AddFriendModal from './AddFriendModal';
+import AdvancedVoiceRecorder from './AdvancedVoiceRecorder';
+import RealTimeAudioPlayer from './RealTimeAudioPlayer';
 import ImprovedRealTimeTranslation from './ImprovedRealTimeTranslation';
 
 const VoiceChatApp = () => {
@@ -38,6 +41,7 @@ const VoiceChatApp = () => {
   const [activeChannelId, setActiveChannelId] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
 
   // Filter participants to only show friends
   const friendParticipants = participants.filter(p => 
@@ -145,7 +149,12 @@ const VoiceChatApp = () => {
                 {isConnected ? 'Connected' : 'Connecting...'}
               </Badge>
               
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/20"
+                onClick={() => setShowAddFriendModal(true)}
+              >
                 <UserPlus className="w-5 h-5" />
               </Button>
               
@@ -244,8 +253,14 @@ const VoiceChatApp = () => {
               </CardContent>
             </Card>
 
-            {/* Improved Voice Messaging */}
-            <ImprovedVoiceMessaging 
+            {/* Real-time Audio Player */}
+            <RealTimeAudioPlayer 
+              channelId={activeChannelId}
+              onAudioReceived={(audioData) => console.log('Audio received:', audioData.byteLength, 'bytes')}
+            />
+
+            {/* Advanced Voice Recorder */}
+            <AdvancedVoiceRecorder 
               channelId={activeChannelId}
               friends={friends}
             />
@@ -305,6 +320,12 @@ const VoiceChatApp = () => {
       <UserProfileModal 
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+      />
+
+      {/* Add Friend Modal */}
+      <AddFriendModal 
+        isOpen={showAddFriendModal}
+        onClose={() => setShowAddFriendModal(false)}
       />
     </div>
   );
