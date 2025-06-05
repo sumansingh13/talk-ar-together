@@ -193,12 +193,13 @@ export const useRealTimeAudio = (channelId: string) => {
       audioContextRef.current = null;
     }
 
-    // Clean up channel
+    // Clean up channel - use unsubscribe first, then remove
     if (channelRef.current) {
       try {
+        await channelRef.current.unsubscribe();
         await supabase.removeChannel(channelRef.current);
       } catch (error) {
-        console.error('Error removing channel:', error);
+        console.error('Error cleaning up channel:', error);
       }
       channelRef.current = null;
     }
