@@ -62,6 +62,7 @@ export const useFriends = () => {
         const profile = profilesData?.find(p => p.id === friendship.friend_id);
         return {
           ...friendship,
+          status: friendship.status as 'pending' | 'accepted' | 'blocked',
           profiles: profile || {
             id: friendship.friend_id,
             username: null,
@@ -116,6 +117,7 @@ export const useFriends = () => {
         const profile = profilesData?.find(p => p.id === request.user_id);
         return {
           ...request,
+          status: request.status as 'pending' | 'accepted' | 'blocked',
           profiles: profile || {
             id: request.user_id,
             username: null,
