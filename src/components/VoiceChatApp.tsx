@@ -1,19 +1,20 @@
-
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Users, Globe, Shield, Zap, LogOut } from 'lucide-react';
+import { Mic, MicOff, Users, Globe, Shield, Zap, LogOut, User, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
+import { useFriends } from '@/hooks/useFriends';
 import PushToTalkButton from './PushToTalkButton';
 import ChannelList from './ChannelList';
 import UserList from './UserList';
 import VoiceEffects from './VoiceEffects';
-import RealTimeTranslation from './RealTimeTranslation';
-import VoiceMessaging from './VoiceMessaging';
 import WalkieTalkieButton from './WalkieTalkieButton';
+import UserProfileModal from './UserProfileModal';
+import ImprovedVoiceMessaging from './ImprovedVoiceMessaging';
+import ImprovedRealTimeTranslation from './ImprovedRealTimeTranslation';
 
 const VoiceChatApp = () => {
   const { user, signOut } = useAuth();
@@ -30,10 +31,25 @@ const VoiceChatApp = () => {
     addTranslation
   } = useSupabaseData();
   
+  const { friends, pendingRequests } = useFriends();
+  
   const [isConnected, setIsConnected] = useState(false);
   const [activeChannel, setActiveChannel] = useState('');
   const [activeChannelId, setActiveChannelId] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Filter participants to only show friends
+  const friendParticipants = participants.filter(p => 
+    friends.some(f => f.friend_id === p.user_id)
+  );
+
+  // Filter channels to only show where user has friends
+  const friendChannels = channels.filter(c => 
+    participants.some(p => friends.some(f => f.friend_id === p.user_id))
+  );
+
+  const connectedUserIds = friendParticipants.map(p => p.user_id).filter(Boolean) as string[];
 
   useEffect(() => {
     if (channels.length > 0 && !activeChannel) {
@@ -89,7 +105,6 @@ const VoiceChatApp = () => {
   };
 
   const activeChannelData = channels.find(c => c.name === activeChannel);
-  const connectedUserIds = participants.map(p => p.user_id).filter(Boolean) as string[];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 via-purple-700 via-red-600 to-red-700 text-white">
@@ -111,12 +126,17 @@ const VoiceChatApp = () => {
                     <p className="text-sm text-white">{userProfile?.full_name || 'User'}</p>
                     <p className="text-xs text-red-300">@{userProfile?.username || 'username'}</p>
                   </div>
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={userProfile?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gradient-to-r from-red-400 to-red-500 text-white font-semibold">
-                      {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <button 
+                    onClick={() => setShowProfileModal(true)}
+                    className="relative"
+                  >
+                    <Avatar className="w-8 h-8 hover:ring-2 hover:ring-red-400 transition-all">
+                      <AvatarImage src={userProfile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-gradient-to-r from-red-400 to-red-500 text-white font-semibold">
+                        {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                 </div>
               )}
               
@@ -124,6 +144,10 @@ const VoiceChatApp = () => {
                 <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
                 {isConnected ? 'Connected' : 'Connecting...'}
               </Badge>
+              
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+                <UserPlus className="w-5 h-5" />
+              </Button>
               
               <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
                 <Shield className="w-5 h-5" />
@@ -148,10 +172,10 @@ const VoiceChatApp = () => {
 
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Channels */}
+          {/* Left Sidebar - Channels (only friend channels) */}
           <div className="lg:col-span-1">
             <ChannelList 
-              channels={channels.map(c => ({
+              channels={friendChannels.map(c => ({
                 id: c.id,
                 name: c.name,
                 users: c.participant_count || 0,
@@ -172,7 +196,7 @@ const VoiceChatApp = () => {
                   <span># {activeChannel}</span>
                   <Badge variant="secondary" className="bg-red-500/20 text-red-200 border-red-500/30">
                     <Users className="w-4 h-4 mr-1" />
-                    {activeChannelData?.participant_count || 0} users
+                    {friendParticipants.length} friends online
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -185,9 +209,9 @@ const VoiceChatApp = () => {
                       <span className="text-sm text-green-300">Voice activity detected</span>
                     </div>
                     
-                    {/* Speaking Users */}
+                    {/* Speaking Users (only friends) */}
                     <div className="space-y-2">
-                      {participants.filter(p => p.is_speaking).map(participant => (
+                      {friendParticipants.filter(p => p.is_speaking).map(participant => (
                         <div key={participant.id} className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2 border border-green-500/20">
                           <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
                             <Mic className="w-4 h-4" />
@@ -220,15 +244,14 @@ const VoiceChatApp = () => {
               </CardContent>
             </Card>
 
-            {/* Voice Messaging */}
-            <VoiceMessaging 
+            {/* Improved Voice Messaging */}
+            <ImprovedVoiceMessaging 
               channelId={activeChannelId}
-              recipientIds={connectedUserIds}
+              friends={friends}
             />
 
-            {/* Real-time Translation */}
-            <RealTimeTranslation 
-              isActive={isConnected}
+            {/* Improved Real-time Translation */}
+            <ImprovedRealTimeTranslation 
               onTranslationReceived={handleTranslationReceived}
             />
 
@@ -262,10 +285,10 @@ const VoiceChatApp = () => {
             )}
           </div>
 
-          {/* Right Sidebar - Users */}
+          {/* Right Sidebar - Users (only friends) */}
           <div className="lg:col-span-1">
             <UserList 
-              users={participants.map(p => ({
+              users={friendParticipants.map(p => ({
                 id: parseInt(p.id),
                 name: p.profiles.full_name || p.profiles.username || 'Anonymous',
                 status: 'online' as const,
@@ -277,6 +300,12 @@ const VoiceChatApp = () => {
           </div>
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <UserProfileModal 
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </div>
   );
 };

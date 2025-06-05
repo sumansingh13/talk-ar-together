@@ -18,16 +18,7 @@ serve(async (req) => {
       throw new Error('Text is required')
     }
 
-    // Use Google Translate API
-    const response = await fetch('https://translate.googleapis.com/translate_a/single', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    // For now, use a mock translation service
-    // In production, you would use Google Translate API, Azure Translator, or similar
+    // Enhanced mock translation service with better language support
     const mockTranslations: Record<string, Record<string, string>> = {
       'hello': { 
         'es': 'hola', 
@@ -36,7 +27,13 @@ serve(async (req) => {
         'hi': 'नमस्ते',
         'kn': 'ನಮಸ್ಕಾರ',
         'ne': 'नमस्ते',
-        'mai': 'प्रणाम'
+        'mai': 'प्रणाम',
+        'it': 'ciao',
+        'pt': 'olá',
+        'ru': 'привет',
+        'ja': 'こんにちは',
+        'ko': '안녕하세요',
+        'zh': '你好'
       },
       'goodbye': { 
         'es': 'adiós', 
@@ -45,7 +42,13 @@ serve(async (req) => {
         'hi': 'अलविदा',
         'kn': 'ವಿದಾಯ',
         'ne': 'बिदाइ',
-        'mai': 'बिदाइ'
+        'mai': 'बिदाइ',
+        'it': 'arrivederci',
+        'pt': 'tchau',
+        'ru': 'до свидания',
+        'ja': 'さようなら',
+        'ko': '안녕히 가세요',
+        'zh': '再见'
       },
       'thank you': { 
         'es': 'gracias', 
@@ -54,12 +57,95 @@ serve(async (req) => {
         'hi': 'धन्यवाद',
         'kn': 'ಧನ್ಯವಾದಗಳು',
         'ne': 'धन्यवाद',
-        'mai': 'धन्यवाद'
+        'mai': 'धन्यवाद',
+        'it': 'grazie',
+        'pt': 'obrigado',
+        'ru': 'спасибо',
+        'ja': 'ありがとう',
+        'ko': '감사합니다',
+        'zh': '谢谢'
+      },
+      'how are you': {
+        'es': '¿cómo estás?',
+        'fr': 'comment allez-vous?',
+        'de': 'wie geht es dir?',
+        'hi': 'आप कैसे हैं?',
+        'kn': 'ನೀವು ಹೇಗಿದ್ದೀರಿ?',
+        'ne': 'तपाईं कस्तो हुनुहुन्छ?',
+        'mai': 'अहाँ कोना छी?',
+        'it': 'come stai?',
+        'pt': 'como você está?',
+        'ru': 'как дела?',
+        'ja': '元気ですか？',
+        'ko': '어떻게 지내세요?',
+        'zh': '你好吗？'
+      },
+      'yes': {
+        'es': 'sí',
+        'fr': 'oui',
+        'de': 'ja',
+        'hi': 'हाँ',
+        'kn': 'ಹೌದು',
+        'ne': 'हो',
+        'mai': 'हँ',
+        'it': 'sì',
+        'pt': 'sim',
+        'ru': 'да',
+        'ja': 'はい',
+        'ko': '네',
+        'zh': '是的'
+      },
+      'no': {
+        'es': 'no',
+        'fr': 'non',
+        'de': 'nein',
+        'hi': 'नहीं',
+        'kn': 'ಇಲ್ಲ',
+        'ne': 'होइन',
+        'mai': 'नै',
+        'it': 'no',
+        'pt': 'não',
+        'ru': 'нет',
+        'ja': 'いいえ',
+        'ko': '아니요',
+        'zh': '不是'
       }
     };
 
-    const lowerText = text.toLowerCase();
-    const translatedText = mockTranslations[lowerText]?.[to] || `[${to.toUpperCase()}] ${text}`;
+    // Try exact match first, then partial match
+    const lowerText = text.toLowerCase().trim();
+    let translatedText = mockTranslations[lowerText]?.[to];
+    
+    if (!translatedText) {
+      // Try finding partial matches
+      for (const [key, translations] of Object.entries(mockTranslations)) {
+        if (lowerText.includes(key) || key.includes(lowerText)) {
+          translatedText = translations[to];
+          break;
+        }
+      }
+    }
+    
+    // If still no translation found, provide a generic response
+    if (!translatedText) {
+      const languageNames: Record<string, string> = {
+        'hi': 'हिंदी में',
+        'kn': 'ಕನ್ನಡದಲ್ಲಿ',
+        'ne': 'नेपालीमा',
+        'mai': 'मैथिलीमे',
+        'es': 'en español',
+        'fr': 'en français',
+        'de': 'auf deutsch',
+        'it': 'in italiano',
+        'pt': 'em português',
+        'ru': 'по-русски',
+        'ja': '日本語で',
+        'ko': '한국어로',
+        'zh': '用中文'
+      };
+      
+      translatedText = `[${languageNames[to] || to.toUpperCase()}] ${text}`;
+    }
 
     return new Response(
       JSON.stringify({ 
