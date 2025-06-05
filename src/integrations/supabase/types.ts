@@ -109,6 +109,30 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -138,6 +162,47 @@ export type Database = {
           username?: string | null
         }
         Relationships: []
+      }
+      voice_messages: {
+        Row: {
+          audio_data: string
+          channel_id: string | null
+          created_at: string
+          duration: number
+          id: string
+          is_played: boolean
+          recipient_id: string | null
+          sender_id: string
+        }
+        Insert: {
+          audio_data: string
+          channel_id?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          is_played?: boolean
+          recipient_id?: string | null
+          sender_id: string
+        }
+        Update: {
+          audio_data?: string
+          channel_id?: string | null
+          created_at?: string
+          duration?: number
+          id?: string
+          is_played?: boolean
+          recipient_id?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

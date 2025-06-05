@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Camera, Save, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserProfileModalProps {
   isOpen: boolean;
