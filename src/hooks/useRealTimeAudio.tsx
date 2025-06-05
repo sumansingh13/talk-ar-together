@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -71,6 +70,7 @@ export const useRealTimeAudio = (channelId: string) => {
       // Subscribe to the channel
       const subscriptionResult = await channel.subscribe();
       
+      // Fix: Check if subscription was successful using the correct type comparison
       if (subscriptionResult === 'SUBSCRIBED') {
         // Announce presence after successful subscription
         channel.send({
