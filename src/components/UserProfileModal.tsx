@@ -4,11 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Save, X } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import AvatarUpload from './AvatarUpload';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -17,12 +18,12 @@ interface UserProfileModalProps {
 
 const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
   const { user } = useAuth();
-  const { userProfile, uploadAvatar } = useSupabaseData();
+  const { userProfile, refetch } = useSupabaseData();
+  const { toast } = useToast();
   
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [country, setCountry] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -33,17 +34,45 @@ const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
     }
   }, [userProfile]);
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return { error: new Error('User not authenticated') };
 
-    setIsUploading(true);
     try {
-      await uploadAvatar(file);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+          upsert: true
+        });
+
+      if (error) {
+        console.error('Error uploading avatar:', error);
+        return { error };
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile with avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating profile with avatar:', updateError);
+        return { error: updateError };
+      }
+
+      await refetch();
+      return { data: publicUrl, error: null };
     } catch (error) {
-      console.error('Failed to upload avatar:', error);
-    } finally {
-      setIsUploading(false);
+      console.error('Error in uploadAvatar:', error);
+      return { error };
     }
   };
 
@@ -64,12 +93,28 @@ const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
 
       if (error) {
         console.error('Failed to update profile:', error);
+        toast({
+          title: "Update failed",
+          description: error.message,
+          variant: "destructive"
+        });
         return;
       }
 
+      toast({
+        title: "Profile updated!",
+        description: "Your profile has been updated successfully",
+      });
+      
+      await refetch();
       onClose();
     } catch (error) {
       console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while updating your profile",
+        variant: "destructive"
+      });
     } finally {
       setIsSaving(false);
     }
@@ -84,31 +129,12 @@ const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
         
         <div className="space-y-6">
           {/* Avatar Section */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={userProfile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-gradient-to-r from-red-400 to-red-500 text-white font-semibold text-xl">
-                  {(userProfile?.full_name || user?.email || 'U').charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <label className="absolute bottom-0 right-0 bg-red-500 hover:bg-red-600 rounded-full p-2 cursor-pointer transition-colors">
-                <Camera className="w-4 h-4" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                  disabled={isUploading}
-                />
-              </label>
-            </div>
-            
-            {isUploading && (
-              <p className="text-sm text-red-300">Uploading...</p>
-            )}
-          </div>
+          <AvatarUpload
+            currentAvatarUrl={userProfile?.avatar_url}
+            onUpload={handleAvatarUpload}
+            fallbackText={(userProfile?.full_name || user?.email || 'U').charAt(0).toUpperCase()}
+            className="flex flex-col items-center"
+          />
 
           {/* Form Fields */}
           <div className="space-y-4">

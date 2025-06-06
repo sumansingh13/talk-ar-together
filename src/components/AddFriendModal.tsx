@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserPlus, Search, X } from 'lucide-react';
-import { useSupabaseData } from '@/hooks/useSupabaseData';
 import { useFriends } from '@/hooks/useFriends';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddFriendModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const { sendFriendRequest } = useFriends();
+  const { toast } = useToast();
 
   const searchUsers = async () => {
     if (!searchEmail.trim()) return;
@@ -29,17 +30,27 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .ilike('username', `%${searchEmail}%`)
+        .or(`username.ilike.%${searchEmail}%,full_name.ilike.%${searchEmail}%`)
         .limit(10);
 
       if (error) {
         console.error('Error searching users:', error);
+        toast({
+          title: "Search failed",
+          description: "Failed to search for users",
+          variant: "destructive"
+        });
         return;
       }
 
       setSearchResults(data || []);
     } catch (error) {
       console.error('Error in searchUsers:', error);
+      toast({
+        title: "Search error",
+        description: "An error occurred while searching",
+        variant: "destructive"
+      });
     } finally {
       setIsSearching(false);
     }
@@ -50,11 +61,27 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
     try {
       const { error } = await sendFriendRequest(userId);
       if (!error) {
-        console.log('Friend request sent successfully!');
+        toast({
+          title: "Success!",
+          description: "Friend request sent successfully",
+        });
         onClose();
+        setSearchEmail('');
+        setSearchResults([]);
+      } else {
+        toast({
+          title: "Failed to send request",
+          description: error.message || "Failed to send friend request",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error sending friend request:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while sending the request",
+        variant: "destructive"
+      });
     } finally {
       setIsSending(false);
     }
@@ -73,14 +100,14 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
         <div className="space-y-4">
           {/* Search Section */}
           <div className="space-y-3">
-            <Label htmlFor="searchEmail" className="text-red-200">Search by username</Label>
+            <Label htmlFor="searchEmail" className="text-red-200">Search by username or name</Label>
             <div className="flex space-x-2">
               <Input
                 id="searchEmail"
                 value={searchEmail}
                 onChange={(e) => setSearchEmail(e.target.value)}
                 className="bg-slate-800/50 border-red-300/20 text-white flex-1"
-                placeholder="Enter username to search..."
+                placeholder="Enter username or name..."
                 onKeyPress={(e) => e.key === 'Enter' && searchUsers()}
               />
               <Button
@@ -132,7 +159,7 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
           {/* No Results */}
           {searchResults.length === 0 && searchEmail && !isSearching && (
             <div className="text-center text-gray-400 py-4">
-              No users found with that username.
+              No users found with that username or name.
             </div>
           )}
 

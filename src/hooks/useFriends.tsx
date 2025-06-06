@@ -149,9 +149,10 @@ export const useFriends = () => {
         .from('friendships')
         .select('*')
         .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
-        .single();
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
+      if (checkError) {
+        console.error('Error checking existing friendship:', checkError);
         return { error: checkError };
       }
 
@@ -170,11 +171,13 @@ export const useFriends = () => {
         .single();
 
       if (error) {
+        console.error('Error creating friendship:', error);
         return { error };
       }
 
       return { data, error: null };
     } catch (error) {
+      console.error('Error in sendFriendRequest:', error);
       return { error: error as Error };
     }
   }, [user]);

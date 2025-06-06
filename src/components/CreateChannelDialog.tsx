@@ -21,30 +21,47 @@ const CreateChannelDialog = ({ onCreateChannel }: CreateChannelDialogProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      toast({
+        title: "Channel name required",
+        description: "Please enter a channel name",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setLoading(true);
     
-    const { error } = await onCreateChannel(name.trim(), description.trim() || undefined, isPrivate);
-    
-    if (error) {
+    try {
+      const { error } = await onCreateChannel(name.trim(), description.trim() || undefined, isPrivate);
+      
+      if (error) {
+        console.error('Error creating channel:', error);
+        toast({
+          title: "Error creating channel",
+          description: error.message || "Failed to create channel",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Channel created!",
+          description: `Successfully created channel "${name}"`,
+        });
+        setOpen(false);
+        setName('');
+        setDescription('');
+        setIsPrivate(false);
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
       toast({
-        title: "Error creating channel",
-        description: error.message,
+        title: "Unexpected error",
+        description: "An unexpected error occurred",
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "Channel created!",
-        description: `Successfully created channel "${name}"`,
-      });
-      setOpen(false);
-      setName('');
-      setDescription('');
-      setIsPrivate(false);
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
