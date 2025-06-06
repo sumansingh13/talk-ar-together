@@ -33,6 +33,8 @@ const CreateChannelDialog = ({ onCreateChannel }: CreateChannelDialogProps) => {
     setLoading(true);
     
     try {
+      console.log('Creating channel with data:', { name: name.trim(), description: description.trim() || undefined, isPrivate });
+      
       const { error } = await onCreateChannel(name.trim(), description.trim() || undefined, isPrivate);
       
       if (error) {
@@ -43,6 +45,7 @@ const CreateChannelDialog = ({ onCreateChannel }: CreateChannelDialogProps) => {
           variant: "destructive"
         });
       } else {
+        console.log('Channel created successfully');
         toast({
           title: "Channel created!",
           description: `Successfully created channel "${name}"`,
@@ -51,6 +54,11 @@ const CreateChannelDialog = ({ onCreateChannel }: CreateChannelDialogProps) => {
         setName('');
         setDescription('');
         setIsPrivate(false);
+        
+        // Force a page refresh to ensure the new channel appears
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
     } catch (error) {
       console.error('Unexpected error:', error);

@@ -25,9 +25,14 @@ export const useFriends = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchFriends = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found, skipping friends fetch');
+      return;
+    }
 
     try {
+      console.log('Fetching friends for user:', user.id);
+      
       // Get accepted friends where user is either the requester or the receiver
       const { data: friendsData, error: friendsError } = await supabase
         .from('friendships')
@@ -40,7 +45,10 @@ export const useFriends = () => {
         return;
       }
 
+      console.log('Raw friends data:', friendsData);
+
       if (!friendsData || friendsData.length === 0) {
+        console.log('No friends found');
         setFriends([]);
         return;
       }
@@ -49,6 +57,8 @@ export const useFriends = () => {
       const friendIds = friendsData.map(friendship => 
         friendship.user_id === user.id ? friendship.friend_id : friendship.user_id
       );
+
+      console.log('Friend IDs:', friendIds);
 
       // Fetch profiles for friends
       const { data: profilesData, error: profilesError } = await supabase
@@ -60,6 +70,8 @@ export const useFriends = () => {
         console.error('Error fetching friend profiles:', profilesError);
         return;
       }
+
+      console.log('Friend profiles data:', profilesData);
 
       // Combine friendship data with profiles
       const friendsWithProfiles = friendsData.map(friendship => {
@@ -79,6 +91,7 @@ export const useFriends = () => {
         };
       });
 
+      console.log('Final friends with profiles:', friendsWithProfiles);
       setFriends(friendsWithProfiles);
     } catch (error) {
       console.error('Error in fetchFriends:', error);
@@ -86,9 +99,14 @@ export const useFriends = () => {
   }, [user]);
 
   const fetchPendingRequests = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found, skipping pending requests fetch');
+      return;
+    }
 
     try {
+      console.log('Fetching pending requests for user:', user.id);
+      
       // Get pending requests sent TO the current user
       const { data: requestsData, error: requestsError } = await supabase
         .from('friendships')
@@ -101,7 +119,10 @@ export const useFriends = () => {
         return;
       }
 
+      console.log('Raw pending requests data:', requestsData);
+
       if (!requestsData || requestsData.length === 0) {
+        console.log('No pending requests found');
         setPendingRequests([]);
         return;
       }
@@ -134,6 +155,7 @@ export const useFriends = () => {
         };
       });
 
+      console.log('Final pending requests with profiles:', requestsWithProfiles);
       setPendingRequests(requestsWithProfiles);
     } catch (error) {
       console.error('Error in fetchPendingRequests:', error);
@@ -141,23 +163,31 @@ export const useFriends = () => {
   }, [user]);
 
   const sendFriendRequest = useCallback(async (friendId: string) => {
-    if (!user) return { error: new Error('Not authenticated') };
+    if (!user) {
+      console.log('No user found, cannot send friend request');
+      return { error: new Error('Not authenticated') };
+    }
 
     try {
-      // Check if friendship already exists
+      console.log('Sending friend request from', user.id, 'to', friendId);
+      
+      // Check if friendship already exists (in either direction)
       const { data: existingFriendship, error: checkError } = await supabase
         .from('friendships')
         .select('*')
         .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
         .maybeSingle();
 
-      if (checkError) {
+      if (checkError && checkError.code !== 'PGRST116') {
         console.error('Error checking existing friendship:', checkError);
         return { error: checkError };
       }
 
+      console.log('Existing friendship check result:', existingFriendship);
+
       if (existingFriendship) {
-        return { error: new Error('Friendship already exists') };
+        console.log('Friendship already exists with status:', existingFriendship.status);
+        return { error: new Error(`Friendship already exists with status: ${existingFriendship.status}`) };
       }
 
       const { data, error } = await supabase
@@ -175,15 +205,23 @@ export const useFriends = () => {
         return { error };
       }
 
+      console.log('Friend request sent successfully:', data);
+      
+      // Refresh data after sending request
+      await fetchFriends();
+      await fetchPendingRequests();
+      
       return { data, error: null };
     } catch (error) {
       console.error('Error in sendFriendRequest:', error);
       return { error: error as Error };
     }
-  }, [user]);
+  }, [user, fetchFriends, fetchPendingRequests]);
 
   const acceptFriendRequest = useCallback(async (requestId: string) => {
     try {
+      console.log('Accepting friend request:', requestId);
+      
       const { error } = await supabase
         .from('friendships')
         .update({ status: 'accepted' })
@@ -194,6 +232,7 @@ export const useFriends = () => {
         return;
       }
 
+      console.log('Friend request accepted successfully');
       await fetchFriends();
       await fetchPendingRequests();
     } catch (error) {
@@ -203,6 +242,8 @@ export const useFriends = () => {
 
   const removeFriend = useCallback(async (friendshipId: string) => {
     try {
+      console.log('Removing friend:', friendshipId);
+      
       const { error } = await supabase
         .from('friendships')
         .delete()
@@ -213,6 +254,7 @@ export const useFriends = () => {
         return;
       }
 
+      console.log('Friend removed successfully');
       await fetchFriends();
     } catch (error) {
       console.error('Error in removeFriend:', error);
@@ -221,8 +263,14 @@ export const useFriends = () => {
 
   useEffect(() => {
     if (user) {
+      console.log('User changed, fetching friends and pending requests');
       fetchFriends();
       fetchPendingRequests();
+      setLoading(false);
+    } else {
+      console.log('No user, resetting friends data');
+      setFriends([]);
+      setPendingRequests([]);
       setLoading(false);
     }
   }, [user, fetchFriends, fetchPendingRequests]);
@@ -235,6 +283,7 @@ export const useFriends = () => {
     acceptFriendRequest,
     removeFriend,
     refetch: useCallback(() => {
+      console.log('Manual refetch triggered');
       fetchFriends();
       fetchPendingRequests();
     }, [fetchFriends, fetchPendingRequests])

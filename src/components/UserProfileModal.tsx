@@ -18,7 +18,7 @@ interface UserProfileModalProps {
 
 const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
   const { user } = useAuth();
-  const { userProfile, refetch } = useSupabaseData();
+  const { userProfile, refetch, uploadAvatar } = useSupabaseData();
   const { toast } = useToast();
   
   const [fullName, setFullName] = useState('');
@@ -35,45 +35,31 @@ const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
   }, [userProfile]);
 
   const handleAvatarUpload = async (file: File) => {
-    if (!user) return { error: new Error('User not authenticated') };
-
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-
-      const { data, error } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, {
-          upsert: true
-        });
-
-      if (error) {
-        console.error('Error uploading avatar:', error);
-        return { error };
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      // Update profile with avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Error updating profile with avatar:', updateError);
-        return { error: updateError };
-      }
-
-      await refetch();
-      return { data: publicUrl, error: null };
-    } catch (error) {
-      console.error('Error in uploadAvatar:', error);
-      return { error };
+    console.log('Avatar upload triggered with file:', file.name);
+    
+    if (!user) {
+      console.log('No user found for avatar upload');
+      return { error: new Error('User not authenticated') };
     }
+
+    const result = await uploadAvatar(file);
+    
+    if (result.error) {
+      console.error('Avatar upload failed:', result.error);
+      toast({
+        title: "Upload failed",
+        description: result.error.message || "Failed to upload avatar",
+        variant: "destructive"
+      });
+    } else {
+      console.log('Avatar upload successful');
+      toast({
+        title: "Avatar updated!",
+        description: "Your profile picture has been updated successfully",
+      });
+    }
+    
+    return result;
   };
 
   const handleSave = async () => {
@@ -81,6 +67,8 @@ const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
 
     setIsSaving(true);
     try {
+      console.log('Saving profile data:', { fullName, username, country });
+      
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -101,6 +89,7 @@ const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => {
         return;
       }
 
+      console.log('Profile updated successfully');
       toast({
         title: "Profile updated!",
         description: "Your profile has been updated successfully",

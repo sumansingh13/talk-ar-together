@@ -15,22 +15,31 @@ interface AddFriendModalProps {
 }
 
 const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
-  const [searchEmail, setSearchEmail] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isSending, setIsSending] = useState(false);
+  const [sendingRequests, setSendingRequests] = useState<Set<string>>(new Set());
   const { sendFriendRequest } = useFriends();
   const { toast } = useToast();
 
   const searchUsers = async () => {
-    if (!searchEmail.trim()) return;
+    if (!searchTerm.trim()) {
+      toast({
+        title: "Please enter a search term",
+        description: "Enter a username or name to search for users",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsSearching(true);
     try {
+      console.log('Searching for users with term:', searchTerm);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .or(`username.ilike.%${searchEmail}%,full_name.ilike.%${searchEmail}%`)
+        .or(`username.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%`)
         .limit(10);
 
       if (error) {
@@ -43,7 +52,15 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
         return;
       }
 
+      console.log('Search results:', data);
       setSearchResults(data || []);
+      
+      if (!data || data.length === 0) {
+        toast({
+          title: "No users found",
+          description: "No users found matching your search term",
+        });
+      }
     } catch (error) {
       console.error('Error in searchUsers:', error);
       toast({
@@ -57,18 +74,26 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
   };
 
   const handleSendRequest = async (userId: string) => {
-    setIsSending(true);
+    if (sendingRequests.has(userId)) return;
+    
+    setSendingRequests(prev => new Set(prev).add(userId));
+    
     try {
+      console.log('Sending friend request to user:', userId);
+      
       const { error } = await sendFriendRequest(userId);
+      
       if (!error) {
+        console.log('Friend request sent successfully');
         toast({
           title: "Success!",
           description: "Friend request sent successfully",
         });
         onClose();
-        setSearchEmail('');
+        setSearchTerm('');
         setSearchResults([]);
       } else {
+        console.error('Failed to send friend request:', error);
         toast({
           title: "Failed to send request",
           description: error.message || "Failed to send friend request",
@@ -83,12 +108,22 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
         variant: "destructive"
       });
     } finally {
-      setIsSending(false);
+      setSendingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
     }
   };
 
+  const handleClose = () => {
+    onClose();
+    setSearchTerm('');
+    setSearchResults([]);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-slate-900 border-red-300/20 text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="text-red-200 flex items-center space-x-2">
@@ -100,22 +135,26 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
         <div className="space-y-4">
           {/* Search Section */}
           <div className="space-y-3">
-            <Label htmlFor="searchEmail" className="text-red-200">Search by username or name</Label>
+            <Label htmlFor="searchTerm" className="text-red-200">Search by username or name</Label>
             <div className="flex space-x-2">
               <Input
-                id="searchEmail"
-                value={searchEmail}
-                onChange={(e) => setSearchEmail(e.target.value)}
+                id="searchTerm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="bg-slate-800/50 border-red-300/20 text-white flex-1"
                 placeholder="Enter username or name..."
                 onKeyPress={(e) => e.key === 'Enter' && searchUsers()}
               />
               <Button
                 onClick={searchUsers}
-                disabled={isSearching || !searchEmail.trim()}
+                disabled={isSearching || !searchTerm.trim()}
                 className="bg-blue-500 hover:bg-blue-600 text-white"
               >
-                <Search className="w-4 h-4" />
+                {isSearching ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>
@@ -144,29 +183,26 @@ const AddFriendModal = ({ isOpen, onClose }: AddFriendModalProps) => {
                   </div>
                   <Button
                     onClick={() => handleSendRequest(user.id)}
-                    disabled={isSending}
+                    disabled={sendingRequests.has(user.id)}
                     size="sm"
                     className="bg-green-500 hover:bg-green-600 text-white"
                   >
-                    <UserPlus className="w-3 h-3 mr-1" />
-                    {isSending ? 'Sending...' : 'Add'}
+                    {sendingRequests.has(user.id) ? (
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                    ) : (
+                      <UserPlus className="w-3 h-3 mr-1" />
+                    )}
+                    {sendingRequests.has(user.id) ? 'Sending...' : 'Add'}
                   </Button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* No Results */}
-          {searchResults.length === 0 && searchEmail && !isSearching && (
-            <div className="text-center text-gray-400 py-4">
-              No users found with that username or name.
-            </div>
-          )}
-
           {/* Action Buttons */}
           <div className="flex space-x-3">
             <Button
-              onClick={onClose}
+              onClick={handleClose}
               variant="outline"
               className="flex-1 border-red-300/20 text-red-200 hover:bg-red-500/20"
             >

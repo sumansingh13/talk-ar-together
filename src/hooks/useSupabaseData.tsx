@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -51,6 +50,8 @@ export const useSupabaseData = () => {
   // Fetch channels
   const fetchChannels = useCallback(async () => {
     try {
+      console.log('Fetching channels...');
+      
       const { data, error } = await supabase
         .from('channels')
         .select(`
@@ -64,11 +65,14 @@ export const useSupabaseData = () => {
         return;
       }
 
+      console.log('Raw channels data:', data);
+
       const channelsWithCount = data.map(channel => ({
         ...channel,
         participant_count: channel.channel_participants?.[0]?.count || 0
       }));
 
+      console.log('Channels with participant count:', channelsWithCount);
       setChannels(channelsWithCount);
     } catch (error) {
       console.error('Error in fetchChannels:', error);
@@ -77,9 +81,14 @@ export const useSupabaseData = () => {
 
   // Create a new channel
   const createChannel = useCallback(async (name: string, description?: string, isPrivate: boolean = false) => {
-    if (!user) return { error: new Error('User not authenticated') };
+    if (!user) {
+      console.log('No user found, cannot create channel');
+      return { error: new Error('User not authenticated') };
+    }
 
     try {
+      console.log('Creating channel:', { name, description, isPrivate, created_by: user.id });
+      
       const { data, error } = await supabase
         .from('channels')
         .insert({
@@ -96,8 +105,17 @@ export const useSupabaseData = () => {
         return { error };
       }
 
+      console.log('Channel created successfully:', data);
+
       // Auto-join the creator to the channel
-      await joinChannel(data.id);
+      console.log('Auto-joining creator to channel...');
+      const joinResult = await joinChannel(data.id);
+      
+      if (joinResult?.error) {
+        console.error('Error auto-joining channel:', joinResult.error);
+      }
+      
+      // Refresh channels list
       await fetchChannels();
       
       return { data, error: null };
@@ -109,11 +127,19 @@ export const useSupabaseData = () => {
 
   // Upload avatar
   const uploadAvatar = useCallback(async (file: File) => {
-    if (!user) return { error: new Error('User not authenticated') };
+    if (!user) {
+      console.log('No user found, cannot upload avatar');
+      return { error: new Error('User not authenticated') };
+    }
 
     try {
+      console.log('Uploading avatar for user:', user.id);
+      console.log('File details:', { name: file.name, size: file.size, type: file.type });
+      
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+      console.log('Uploading to path:', fileName);
 
       const { data, error } = await supabase.storage
         .from('avatars')
@@ -126,10 +152,14 @@ export const useSupabaseData = () => {
         return { error };
       }
 
+      console.log('Avatar uploaded successfully:', data);
+
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName);
+
+      console.log('Generated public URL:', publicUrl);
 
       // Update profile with avatar URL
       const { error: updateError } = await supabase
@@ -142,6 +172,7 @@ export const useSupabaseData = () => {
         return { error: updateError };
       }
 
+      console.log('Profile updated with avatar URL');
       await fetchUserProfile();
       return { data: publicUrl, error: null };
     } catch (error) {
@@ -153,6 +184,8 @@ export const useSupabaseData = () => {
   // Fetch participants for a specific channel
   const fetchParticipants = useCallback(async (channelId: string) => {
     try {
+      console.log('Fetching participants for channel:', channelId);
+      
       const { data: participantsData, error: participantsError } = await supabase
         .from('channel_participants')
         .select('*')
@@ -163,12 +196,16 @@ export const useSupabaseData = () => {
         return;
       }
 
+      console.log('Raw participants data:', participantsData);
+
       if (!participantsData || participantsData.length === 0) {
+        console.log('No participants found for channel');
         setParticipants([]);
         return;
       }
 
       const userIds = participantsData.map(p => p.user_id);
+      console.log('Fetching profiles for user IDs:', userIds);
 
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
@@ -178,6 +215,8 @@ export const useSupabaseData = () => {
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
       }
+
+      console.log('Profiles data:', profilesData);
 
       const participantsWithProfiles = participantsData.map(participant => {
         const profile = profilesData?.find(p => p.id === participant.user_id);
@@ -193,6 +232,7 @@ export const useSupabaseData = () => {
         };
       });
 
+      console.log('Final participants with profiles:', participantsWithProfiles);
       setParticipants(participantsWithProfiles);
     } catch (error) {
       console.error('Error in fetchParticipants:', error);
@@ -290,9 +330,14 @@ export const useSupabaseData = () => {
 
   // Join a channel
   const joinChannel = useCallback(async (channelId: string) => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found, cannot join channel');
+      return { error: new Error('User not authenticated') };
+    }
 
     try {
+      console.log('Joining channel:', channelId, 'for user:', user.id);
+      
       const { error } = await supabase
         .from('channel_participants')
         .insert({
@@ -302,9 +347,14 @@ export const useSupabaseData = () => {
 
       if (error && !error.message.includes('duplicate')) {
         console.error('Error joining channel:', error);
+        return { error };
       }
+
+      console.log('Successfully joined channel or already a member');
+      return { error: null };
     } catch (error) {
       console.error('Error in joinChannel:', error);
+      return { error };
     }
   }, [user]);
 
@@ -348,9 +398,14 @@ export const useSupabaseData = () => {
 
   // Fetch user profile
   const fetchUserProfile = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found, skipping profile fetch');
+      return;
+    }
 
     try {
+      console.log('Fetching user profile for:', user.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -362,6 +417,7 @@ export const useSupabaseData = () => {
         return;
       }
 
+      console.log('User profile data:', data);
       setUserProfile(data);
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
@@ -371,8 +427,13 @@ export const useSupabaseData = () => {
   // Initial data fetch
   useEffect(() => {
     if (user) {
+      console.log('User logged in, fetching initial data');
       fetchChannels();
       fetchUserProfile();
+    } else {
+      console.log('No user, resetting data');
+      setChannels([]);
+      setUserProfile(null);
     }
     setLoading(false);
   }, [user, fetchChannels, fetchUserProfile]);
@@ -385,14 +446,15 @@ export const useSupabaseData = () => {
     loading,
     fetchChannels,
     fetchParticipants,
-    fetchTranslations,
+    // fetchTranslations,
     createChannel,
     uploadAvatar,
-    addTranslation,
+    // addTranslation,
     joinChannel,
-    leaveChannel,
-    updateSpeakingStatus,
+    // leaveChannel,
+    // updateSpeakingStatus,
     refetch: useCallback(() => {
+      console.log('Manual refetch triggered');
       fetchChannels();
       if (user) fetchUserProfile();
     }, [fetchChannels, fetchUserProfile, user])
