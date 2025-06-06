@@ -59,7 +59,7 @@ export const useSupabaseData = () => {
           *,
           channel_participants(count)
         `)
-        .order('created_at');
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching channels:', error);
@@ -116,17 +116,19 @@ export const useSupabaseData = () => {
         console.error('Error auto-joining channel:', joinResult.error);
       }
       
-      // Refresh channels list
-      await fetchChannels();
+      // Force refresh channels list immediately
+      setTimeout(async () => {
+        await fetchChannels();
+      }, 100);
       
       return { data, error: null };
     } catch (error) {
       console.error('Error in createChannel:', error);
       return { error };
     }
-  }, [user, fetchChannels]);
+  }, [user]);
 
-  // Upload avatar
+  // Upload avatar with bucket creation fallback
   const uploadAvatar = useCallback(async (file: File) => {
     if (!user) {
       console.log('No user found, cannot upload avatar');
@@ -137,6 +139,16 @@ export const useSupabaseData = () => {
       console.log('Uploading avatar for user:', user.id);
       console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
+      // First, try to ensure the bucket exists
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      console.log('Available buckets:', buckets);
+      
+      const avatarsBucket = buckets?.find(bucket => bucket.name === 'avatars');
+      if (!avatarsBucket) {
+        console.log('Avatars bucket not found, it needs to be created in Supabase dashboard');
+        return { error: new Error('Avatars storage bucket does not exist. Please contact support.') };
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 

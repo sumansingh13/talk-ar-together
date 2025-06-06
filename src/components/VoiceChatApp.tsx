@@ -31,7 +31,8 @@ const VoiceChatApp = () => {
     joinChannel, 
     updateSpeakingStatus,
     createChannel,
-    addTranslation
+    addTranslation,
+    refetch
   } = useSupabaseData();
   
   const { friends, pendingRequests } = useFriends();
@@ -43,17 +44,13 @@ const VoiceChatApp = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
 
-  // Filter participants to only show friends
-  const friendParticipants = participants.filter(p => 
-    friends.some(f => f.friend_id === p.user_id)
-  );
+  // Show ALL channels, not just friend channels
+  const displayChannels = channels;
 
-  // Filter channels to only show where user has friends
-  const friendChannels = channels.filter(c => 
-    participants.some(p => friends.some(f => f.friend_id === p.user_id))
-  );
+  // Show ALL participants, not just friends
+  const displayParticipants = participants;
 
-  const connectedUserIds = friendParticipants.map(p => p.user_id).filter(Boolean) as string[];
+  const connectedUserIds = displayParticipants.map(p => p.user_id).filter(Boolean) as string[];
 
   useEffect(() => {
     if (channels.length > 0 && !activeChannel) {
@@ -98,7 +95,12 @@ const VoiceChatApp = () => {
   };
 
   const handleCreateChannel = async (name: string, description?: string, isPrivate?: boolean) => {
-    return await createChannel(name, description, isPrivate);
+    const result = await createChannel(name, description, isPrivate);
+    // Force a manual refetch after channel creation
+    setTimeout(() => {
+      refetch();
+    }, 500);
+    return result;
   };
 
   const handleTranslationReceived = async (originalText: string, translatedText: string, fromLang: string, toLang: string) => {
@@ -181,10 +183,10 @@ const VoiceChatApp = () => {
 
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Channels (only friend channels) */}
+          {/* Left Sidebar - Channels (show all channels) */}
           <div className="lg:col-span-1">
             <ChannelList 
-              channels={friendChannels.map(c => ({
+              channels={displayChannels.map(c => ({
                 id: c.id,
                 name: c.name,
                 users: c.participant_count || 0,
@@ -205,7 +207,7 @@ const VoiceChatApp = () => {
                   <span># {activeChannel}</span>
                   <Badge variant="secondary" className="bg-red-500/20 text-red-200 border-red-500/30">
                     <Users className="w-4 h-4 mr-1" />
-                    {friendParticipants.length} friends online
+                    {displayParticipants.length} users online
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -218,9 +220,9 @@ const VoiceChatApp = () => {
                       <span className="text-sm text-green-300">Voice activity detected</span>
                     </div>
                     
-                    {/* Speaking Users (only friends) */}
+                    {/* Speaking Users */}
                     <div className="space-y-2">
-                      {friendParticipants.filter(p => p.is_speaking).map(participant => (
+                      {displayParticipants.filter(p => p.is_speaking).map(participant => (
                         <div key={participant.id} className="flex items-center space-x-3 bg-green-500/10 rounded-lg p-2 border border-green-500/20">
                           <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center">
                             <Mic className="w-4 h-4" />
@@ -300,10 +302,10 @@ const VoiceChatApp = () => {
             )}
           </div>
 
-          {/* Right Sidebar - Users (only friends) */}
+          {/* Right Sidebar - Users (show all participants) */}
           <div className="lg:col-span-1">
             <UserList 
-              users={friendParticipants.map(p => ({
+              users={displayParticipants.map(p => ({
                 id: parseInt(p.id),
                 name: p.profiles.full_name || p.profiles.username || 'Anonymous',
                 status: 'online' as const,

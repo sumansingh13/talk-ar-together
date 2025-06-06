@@ -27,6 +27,7 @@ export const useFriends = () => {
   const fetchFriends = useCallback(async () => {
     if (!user) {
       console.log('No user found, skipping friends fetch');
+      setFriends([]);
       return;
     }
 
@@ -95,12 +96,14 @@ export const useFriends = () => {
       setFriends(friendsWithProfiles);
     } catch (error) {
       console.error('Error in fetchFriends:', error);
+      setFriends([]);
     }
   }, [user]);
 
   const fetchPendingRequests = useCallback(async () => {
     if (!user) {
       console.log('No user found, skipping pending requests fetch');
+      setPendingRequests([]);
       return;
     }
 
@@ -159,6 +162,7 @@ export const useFriends = () => {
       setPendingRequests(requestsWithProfiles);
     } catch (error) {
       console.error('Error in fetchPendingRequests:', error);
+      setPendingRequests([]);
     }
   }, [user]);
 
@@ -166,6 +170,11 @@ export const useFriends = () => {
     if (!user) {
       console.log('No user found, cannot send friend request');
       return { error: new Error('Not authenticated') };
+    }
+
+    if (friendId === user.id) {
+      console.log('Cannot send friend request to yourself');
+      return { error: new Error('Cannot send friend request to yourself') };
     }
 
     try {
@@ -208,8 +217,7 @@ export const useFriends = () => {
       console.log('Friend request sent successfully:', data);
       
       // Refresh data after sending request
-      await fetchFriends();
-      await fetchPendingRequests();
+      await Promise.all([fetchFriends(), fetchPendingRequests()]);
       
       return { data, error: null };
     } catch (error) {
@@ -233,8 +241,7 @@ export const useFriends = () => {
       }
 
       console.log('Friend request accepted successfully');
-      await fetchFriends();
-      await fetchPendingRequests();
+      await Promise.all([fetchFriends(), fetchPendingRequests()]);
     } catch (error) {
       console.error('Error in acceptFriendRequest:', error);
     }
@@ -255,18 +262,18 @@ export const useFriends = () => {
       }
 
       console.log('Friend removed successfully');
-      await fetchFriends();
+      await Promise.all([fetchFriends(), fetchPendingRequests()]);
     } catch (error) {
       console.error('Error in removeFriend:', error);
     }
-  }, [fetchFriends]);
+  }, [fetchFriends, fetchPendingRequests]);
 
   useEffect(() => {
     if (user) {
       console.log('User changed, fetching friends and pending requests');
-      fetchFriends();
-      fetchPendingRequests();
-      setLoading(false);
+      Promise.all([fetchFriends(), fetchPendingRequests()]).finally(() => {
+        setLoading(false);
+      });
     } else {
       console.log('No user, resetting friends data');
       setFriends([]);
@@ -284,8 +291,7 @@ export const useFriends = () => {
     removeFriend,
     refetch: useCallback(() => {
       console.log('Manual refetch triggered');
-      fetchFriends();
-      fetchPendingRequests();
+      return Promise.all([fetchFriends(), fetchPendingRequests()]);
     }, [fetchFriends, fetchPendingRequests])
   };
 };
