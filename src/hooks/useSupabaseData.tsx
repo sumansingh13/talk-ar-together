@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -446,13 +447,13 @@ export const useSupabaseData = () => {
     loading,
     fetchChannels,
     fetchParticipants,
-    // fetchTranslations,
+    fetchTranslations,
     createChannel,
     uploadAvatar,
-    // addTranslation,
+    addTranslation,
     joinChannel,
-    // leaveChannel,
-    // updateSpeakingStatus,
+    leaveChannel,
+    updateSpeakingStatus,
     refetch: useCallback(() => {
       console.log('Manual refetch triggered');
       fetchChannels();
