@@ -195,8 +195,20 @@ export const useFriends = () => {
       console.log('Existing friendship check result:', existingFriendship);
 
       if (existingFriendship) {
-        console.log('Friendship already exists with status:', existingFriendship.status);
-        return { error: new Error(`Friendship already exists with status: ${existingFriendship.status}`) };
+        const friendshipStatus = existingFriendship.status;
+        console.log('Friendship already exists with status:', friendshipStatus);
+        
+        if (friendshipStatus === 'accepted') {
+          return { error: new Error('You are already friends with this user') };
+        } else if (friendshipStatus === 'pending') {
+          if (existingFriendship.user_id === user.id) {
+            return { error: new Error('Friend request already sent') };
+          } else {
+            return { error: new Error('This user has already sent you a friend request') };
+          }
+        } else {
+          return { error: new Error(`Friendship exists with status: ${friendshipStatus}`) };
+        }
       }
 
       const { data, error } = await supabase

@@ -43,8 +43,8 @@ const PushToTalkButton = ({ isSpeaking, onToggle }: PushToTalkButtonProps) => {
       <Button
         className={`w-24 h-24 rounded-full transition-all duration-200 transform ${
           isPressed 
-            ? 'bg-gradient-to-r from-red-500 to-red-600 scale-110 shadow-lg shadow-red-500/50' 
-            : 'bg-gradient-to-r from-red-500 to-red-600 hover:scale-105 shadow-lg shadow-red-500/30'
+            ? 'bg-gradient-to-r from-blue-500 to-purple-600 scale-110 shadow-lg shadow-blue-500/50' 
+            : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:scale-105 shadow-lg shadow-blue-500/30'
         }`}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
@@ -62,10 +62,10 @@ const PushToTalkButton = ({ isSpeaking, onToggle }: PushToTalkButtonProps) => {
       </Button>
       
       <div className="text-center">
-        <p className="text-sm text-red-200">
+        <p className="text-sm text-blue-200">
           {isPressed ? 'Release to stop' : 'Hold to talk'}
         </p>
-        <p className="text-xs text-red-300">
+        <p className="text-xs text-blue-300">
           Press and hold SPACE or click
         </p>
       </div>
@@ -73,8 +73,8 @@ const PushToTalkButton = ({ isSpeaking, onToggle }: PushToTalkButtonProps) => {
       {/* Visual feedback */}
       {isPressed && (
         <div className="absolute inset-0 pointer-events-none">
-          <div className="w-32 h-32 border-4 border-red-400 rounded-full animate-ping opacity-20" />
-          <div className="w-40 h-40 border-2 border-red-300 rounded-full animate-ping opacity-10 animation-delay-150" />
+          <div className="w-32 h-32 border-4 border-blue-400 rounded-full animate-ping opacity-20" />
+          <div className="w-40 h-40 border-2 border-blue-300 rounded-full animate-ping opacity-10 animation-delay-150" />
         </div>
       )}
     </div>

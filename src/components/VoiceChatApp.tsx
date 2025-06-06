@@ -96,10 +96,6 @@ const VoiceChatApp = () => {
 
   const handleCreateChannel = async (name: string, description?: string, isPrivate?: boolean) => {
     const result = await createChannel(name, description, isPrivate);
-    // Force a manual refetch after channel creation
-    setTimeout(() => {
-      refetch();
-    }, 500);
     return result;
   };
 
@@ -113,16 +109,16 @@ const VoiceChatApp = () => {
   const activeChannelData = channels.find(c => c.name === activeChannel);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-900 via-blue-800 via-purple-700 via-red-600 to-red-700 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 text-white">
       {/* Header */}
-      <div className="bg-black/20 backdrop-blur-lg border-b border-white/10">
+      <div className="bg-black/30 backdrop-blur-lg border-b border-white/20">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Zap className="w-6 h-6" />
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-red-200 bg-clip-text text-transparent">Voxtrek</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">Voxtrek</h1>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -130,15 +126,15 @@ const VoiceChatApp = () => {
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
                     <p className="text-sm text-white">{userProfile?.full_name || 'User'}</p>
-                    <p className="text-xs text-red-300">@{userProfile?.username || 'username'}</p>
+                    <p className="text-xs text-blue-300">@{userProfile?.username || 'username'}</p>
                   </div>
                   <button 
                     onClick={() => setShowProfileModal(true)}
                     className="relative"
                   >
-                    <Avatar className="w-8 h-8 hover:ring-2 hover:ring-red-400 transition-all">
+                    <Avatar className="w-8 h-8 hover:ring-2 hover:ring-blue-400 transition-all">
                       <AvatarImage src={userProfile?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gradient-to-r from-red-400 to-red-500 text-white font-semibold">
+                      <AvatarFallback className="bg-gradient-to-r from-blue-400 to-purple-500 text-white font-semibold">
                         {(userProfile?.full_name || user.email || 'U').charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -201,11 +197,11 @@ const VoiceChatApp = () => {
           {/* Main Chat Area */}
           <div className="lg:col-span-2 space-y-6">
             {/* Active Channel Info */}
-            <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
+            <Card className="bg-slate-900/40 backdrop-blur-lg border-purple-300/20 text-white shadow-lg shadow-purple-500/10">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between">
                   <span># {activeChannel}</span>
-                  <Badge variant="secondary" className="bg-red-500/20 text-red-200 border-red-500/30">
+                  <Badge variant="secondary" className="bg-purple-500/20 text-purple-200 border-purple-500/30">
                     <Users className="w-4 h-4 mr-1" />
                     {displayParticipants.length} users online
                   </Badge>
@@ -274,9 +270,9 @@ const VoiceChatApp = () => {
 
             {/* Translation History */}
             {translations.length > 0 && (
-              <Card className="bg-slate-900/40 backdrop-blur-lg border-red-300/20 text-white shadow-lg shadow-red-500/10">
+              <Card className="bg-slate-900/40 backdrop-blur-lg border-purple-300/20 text-white shadow-lg shadow-purple-500/10">
                 <CardHeader>
-                  <CardTitle className="text-red-200">Recent Translations</CardTitle>
+                  <CardTitle className="text-purple-200">Recent Translations</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-60 overflow-y-auto">

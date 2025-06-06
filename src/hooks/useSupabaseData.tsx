@@ -116,19 +116,17 @@ export const useSupabaseData = () => {
         console.error('Error auto-joining channel:', joinResult.error);
       }
       
-      // Force refresh channels list immediately
-      setTimeout(async () => {
-        await fetchChannels();
-      }, 100);
+      // Refresh channels immediately after creation
+      await fetchChannels();
       
       return { data, error: null };
     } catch (error) {
       console.error('Error in createChannel:', error);
       return { error };
     }
-  }, [user]);
+  }, [user, fetchChannels]);
 
-  // Upload avatar with bucket creation fallback
+  // Upload avatar with bucket validation
   const uploadAvatar = useCallback(async (file: File) => {
     if (!user) {
       console.log('No user found, cannot upload avatar');
@@ -139,14 +137,14 @@ export const useSupabaseData = () => {
       console.log('Uploading avatar for user:', user.id);
       console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
-      // First, try to ensure the bucket exists
+      // Check if the avatars bucket exists
       const { data: buckets, error: listError } = await supabase.storage.listBuckets();
       console.log('Available buckets:', buckets);
       
       const avatarsBucket = buckets?.find(bucket => bucket.name === 'avatars');
       if (!avatarsBucket) {
-        console.log('Avatars bucket not found, it needs to be created in Supabase dashboard');
-        return { error: new Error('Avatars storage bucket does not exist. Please contact support.') };
+        console.log('Avatars bucket not found');
+        return { error: new Error('Avatars storage bucket does not exist. Please create it in the Supabase dashboard.') };
       }
 
       const fileExt = file.name.split('.').pop();
