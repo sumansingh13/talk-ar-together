@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Users, Globe, Shield, Zap, LogOut, User, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +30,7 @@ const VoiceChatApp = () => {
     joinChannel, 
     updateSpeakingStatus,
     createChannel,
+    deleteChannel,
     addTranslation,
     refetch
   } = useSupabaseData();
@@ -96,6 +96,27 @@ const VoiceChatApp = () => {
 
   const handleCreateChannel = async (name: string, description?: string, isPrivate?: boolean) => {
     const result = await createChannel(name, description, isPrivate);
+    return result;
+  };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    const result = await deleteChannel(channelId);
+    
+    // If the deleted channel was the active one, reset to first available channel
+    if (result && !result.error && activeChannelId === channelId) {
+      setActiveChannel('');
+      setActiveChannelId('');
+      if (channels.length > 1) {
+        const firstChannel = channels.find(c => c.id !== channelId);
+        if (firstChannel) {
+          setActiveChannel(firstChannel.name);
+          setActiveChannelId(firstChannel.id);
+          fetchParticipants(firstChannel.id);
+          fetchTranslations(firstChannel.id);
+        }
+      }
+    }
+    
     return result;
   };
 
@@ -186,11 +207,13 @@ const VoiceChatApp = () => {
                 id: c.id,
                 name: c.name,
                 users: c.participant_count || 0,
-                private: c.is_private
+                private: c.is_private,
+                created_by: c.created_by
               }))}
               activeChannel={activeChannel} 
               onChannelSelect={handleChannelSelect}
               onCreateChannel={handleCreateChannel}
+              onDeleteChannel={handleDeleteChannel}
             />
           </div>
 

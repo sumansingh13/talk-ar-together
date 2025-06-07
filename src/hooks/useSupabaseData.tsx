@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -126,7 +125,61 @@ export const useSupabaseData = () => {
     }
   }, [user, fetchChannels]);
 
-  // Upload avatar with bucket validation
+  // Delete a channel
+  const deleteChannel = useCallback(async (channelId: string) => {
+    if (!user) {
+      console.log('No user found, cannot delete channel');
+      return { error: new Error('User not authenticated') };
+    }
+
+    try {
+      console.log('Deleting channel:', channelId);
+      
+      // First, delete all participants
+      const { error: participantsError } = await supabase
+        .from('channel_participants')
+        .delete()
+        .eq('channel_id', channelId);
+
+      if (participantsError) {
+        console.error('Error deleting channel participants:', participantsError);
+      }
+
+      // Then delete all translations
+      const { error: translationsError } = await supabase
+        .from('channel_translations')
+        .delete()
+        .eq('channel_id', channelId);
+
+      if (translationsError) {
+        console.error('Error deleting channel translations:', translationsError);
+      }
+
+      // Finally, delete the channel
+      const { error } = await supabase
+        .from('channels')
+        .delete()
+        .eq('id', channelId)
+        .eq('created_by', user.id); // Only allow creator to delete
+
+      if (error) {
+        console.error('Error deleting channel:', error);
+        return { error };
+      }
+
+      console.log('Channel deleted successfully');
+      
+      // Refresh channels after deletion
+      await fetchChannels();
+      
+      return { error: null };
+    } catch (error) {
+      console.error('Error in deleteChannel:', error);
+      return { error };
+    }
+  }, [user, fetchChannels]);
+
+  // Upload avatar with proper bucket handling
   const uploadAvatar = useCallback(async (file: File) => {
     if (!user) {
       console.log('No user found, cannot upload avatar');
@@ -137,21 +190,12 @@ export const useSupabaseData = () => {
       console.log('Uploading avatar for user:', user.id);
       console.log('File details:', { name: file.name, size: file.size, type: file.type });
       
-      // Check if the avatars bucket exists
-      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-      console.log('Available buckets:', buckets);
-      
-      const avatarsBucket = buckets?.find(bucket => bucket.name === 'avatars');
-      if (!avatarsBucket) {
-        console.log('Avatars bucket not found');
-        return { error: new Error('Avatars storage bucket does not exist. Please create it in the Supabase dashboard.') };
-      }
-
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
       console.log('Uploading to path:', fileName);
 
+      // Try to upload the file
       const { data, error } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
@@ -459,6 +503,7 @@ export const useSupabaseData = () => {
     fetchParticipants,
     fetchTranslations,
     createChannel,
+    deleteChannel,
     uploadAvatar,
     addTranslation,
     joinChannel,
