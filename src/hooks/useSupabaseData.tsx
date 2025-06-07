@@ -125,7 +125,7 @@ export const useSupabaseData = () => {
     }
   }, [user, fetchChannels]);
 
-  // Delete a channel
+  // Delete a channel - improved with better cleanup
   const deleteChannel = useCallback(async (channelId: string) => {
     if (!user) {
       console.log('No user found, cannot delete channel');
@@ -135,7 +135,23 @@ export const useSupabaseData = () => {
     try {
       console.log('Deleting channel:', channelId);
       
-      // First, delete all participants
+      // First check if user is the creator
+      const { data: channelData, error: checkError } = await supabase
+        .from('channels')
+        .select('created_by')
+        .eq('id', channelId)
+        .single();
+
+      if (checkError) {
+        console.error('Error checking channel ownership:', checkError);
+        return { error: checkError };
+      }
+
+      if (channelData.created_by !== user.id) {
+        return { error: new Error('Only channel creators can delete channels') };
+      }
+
+      // Delete all participants first
       const { error: participantsError } = await supabase
         .from('channel_participants')
         .delete()
@@ -145,7 +161,7 @@ export const useSupabaseData = () => {
         console.error('Error deleting channel participants:', participantsError);
       }
 
-      // Then delete all translations
+      // Delete all translations
       const { error: translationsError } = await supabase
         .from('channel_translations')
         .delete()
@@ -155,16 +171,26 @@ export const useSupabaseData = () => {
         console.error('Error deleting channel translations:', translationsError);
       }
 
+      // Delete all voice messages for this channel
+      const { error: voiceMessagesError } = await supabase
+        .from('voice_messages')
+        .delete()
+        .eq('channel_id', channelId);
+
+      if (voiceMessagesError) {
+        console.error('Error deleting voice messages:', voiceMessagesError);
+      }
+
       // Finally, delete the channel
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('channels')
         .delete()
         .eq('id', channelId)
         .eq('created_by', user.id); // Only allow creator to delete
 
-      if (error) {
-        console.error('Error deleting channel:', error);
-        return { error };
+      if (deleteError) {
+        console.error('Error deleting channel:', deleteError);
+        return { error: deleteError };
       }
 
       console.log('Channel deleted successfully');
@@ -179,7 +205,7 @@ export const useSupabaseData = () => {
     }
   }, [user, fetchChannels]);
 
-  // Upload avatar with proper bucket handling
+  // Upload avatar with better error handling and public access
   const uploadAvatar = useCallback(async (file: File) => {
     if (!user) {
       console.log('No user found, cannot upload avatar');
@@ -195,10 +221,24 @@ export const useSupabaseData = () => {
 
       console.log('Uploading to path:', fileName);
 
-      // Try to upload the file
+      // Delete previous avatar if exists
+      const { data: existingFiles } = await supabase.storage
+        .from('avatars')
+        .list(user.id);
+
+      if (existingFiles && existingFiles.length > 0) {
+        console.log('Deleting existing avatar files');
+        const filesToDelete = existingFiles.map(file => `${user.id}/${file.name}`);
+        await supabase.storage
+          .from('avatars')
+          .remove(filesToDelete);
+      }
+
+      // Upload the new file
       const { data, error } = await supabase.storage
         .from('avatars')
         .upload(fileName, file, {
+          cacheControl: '3600',
           upsert: true
         });
 
@@ -374,7 +414,6 @@ export const useSupabaseData = () => {
         return { error };
       }
 
-      // Refresh translations after adding a new one
       await fetchTranslations(channelId);
       return { data, error: null };
     } catch (error) {
